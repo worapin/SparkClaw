@@ -1,16 +1,16 @@
 import { z } from "zod";
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  STRIPE_SECRET_KEY: z.string().startsWith("sk_"),
-  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_"),
-  STRIPE_PRICE_STARTER: z.string().startsWith("price_"),
-  STRIPE_PRICE_PRO: z.string().startsWith("price_"),
-  STRIPE_PRICE_SCALE: z.string().startsWith("price_"),
-  RAILWAY_API_TOKEN: z.string().min(1),
-  RAILWAY_PROJECT_ID: z.string().min(1),
-  RESEND_API_KEY: z.string().startsWith("re_"),
-  SESSION_SECRET: z.string().min(32),
+  DATABASE_URL: z.string().url().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_PRICE_STARTER: z.string().optional(),
+  STRIPE_PRICE_PRO: z.string().optional(),
+  STRIPE_PRICE_SCALE: z.string().optional(),
+  RAILWAY_API_TOKEN: z.string().optional(),
+  RAILWAY_PROJECT_ID: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  SESSION_SECRET: z.string().min(8).default("dev-secret-change-in-production-min-32-chars"),
   WEB_URL: z.string().url().default("http://localhost:5173"),
   PORT: z.coerce.number().default(3000),
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -18,9 +18,9 @@ const envSchema = z.object({
   POSTHOG_API_KEY: z.string().optional(),
   // Custom domain configuration
   CUSTOM_DOMAIN_ROOT: z.string().min(1).default("sparkclaw.io"),
-  REDIS_URL: z.string().url().optional(),
+  REDIS_URL: z.string().optional(),
   // OpenClaw template configuration
-  OPENCLAW_GITHUB_REPO: z.string().min(1),
+  OPENCLAW_GITHUB_REPO: z.string().default("sparkclaw/openclaw-template"),
   PRISM_BASE_URL: z.string().url().optional(),
   PRISM_API_KEY: z.string().optional(),
 });

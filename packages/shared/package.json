@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "echo 'No build needed'"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./types": "./src/types.ts",
