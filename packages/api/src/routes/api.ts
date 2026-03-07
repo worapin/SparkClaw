@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import { createCheckoutSchema } from "@sparkclaw/shared/schemas";
 import { SESSION_COOKIE_NAME } from "@sparkclaw/shared/constants";
-import type { MeResponse, InstanceResponse, User } from "@sparkclaw/shared/types";
+import type { MeResponse, InstanceResponse, User, DomainStatus } from "@sparkclaw/shared/types";
 import { csrfMiddleware } from "../middleware/csrf.js";
 import { createCheckoutSession } from "../services/stripe.js";
 import { verifySession } from "../services/session.js";
@@ -66,6 +66,8 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
       id: result.id,
       status: result.status as InstanceResponse["status"],
       url: result.url,
+      customDomain: result.customDomain,
+      domainStatus: (result.domainStatus as DomainStatus) ?? "pending",
       plan: result.subscription.plan as InstanceResponse["plan"],
       subscriptionStatus: result.subscription.status as InstanceResponse["subscriptionStatus"],
       createdAt: result.createdAt.toISOString(),

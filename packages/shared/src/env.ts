@@ -19,6 +19,10 @@ const envSchema = z.object({
   // Custom domain configuration
   CUSTOM_DOMAIN_ROOT: z.string().min(1).default("sparkclaw.io"),
   REDIS_URL: z.string().url().optional(),
+  // OpenClaw template configuration
+  OPENCLAW_GITHUB_REPO: z.string().min(1),
+  PRISM_BASE_URL: z.string().url().optional(),
+  PRISM_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

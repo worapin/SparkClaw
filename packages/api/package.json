@@ -15,7 +15,9 @@
     "resend": "^4.1.0",
     "drizzle-orm": "^0.40.0",
     "@neondatabase/serverless": "^0.10.0",
-    "@sparkclaw/shared": "workspace:*"
+    "@sparkclaw/shared": "workspace:*",
+    "bullmq": "^5.0.0",
+    "ioredis": "^5.0.0"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

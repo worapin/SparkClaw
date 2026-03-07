@@ -6,6 +6,9 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  jsonb,
+  boolean,
+  real,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -14,6 +17,7 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: varchar("email", { length: 255 }).notNull().unique(),
+  role: varchar("role", { length: 20 }).notNull().default("user"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -123,6 +127,31 @@ export const instances = pgTable(
     url: text("url"),
     status: varchar("status", { length: 20 }).notNull(),
     domainStatus: varchar("domain_status", { length: 20 }).default("pending"),
+    // Setup wizard state
+    setupCompleted: boolean("setup_completed").default(false),
+    instanceName: varchar("instance_name", { length: 100 }),
+    timezone: varchar("timezone", { length: 50 }).default("UTC"),
+    // AI Configuration (stored as JSON)
+    aiConfig: jsonb("ai_config").$type<{
+      model: string;
+      persona: string;
+      customPrompt?: string;
+      language: string;
+      temperature: number;
+      maxTokens: number;
+    }>(),
+    // Feature flags (stored as JSON)
+    features: jsonb("features").$type<{
+      imageGeneration: boolean;
+      webSearch: boolean;
+      fileProcessing: boolean;
+      voiceMessages: boolean;
+      memory: boolean;
+      codeExecution: boolean;
+      mediaGeneration: boolean;
+      calendar: boolean;
+      email: boolean;
+    }>(),
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -133,13 +162,46 @@ export const instances = pgTable(
     index("instances_status_idx").on(table.status),
     uniqueIndex("instances_custom_domain_idx").on(table.customDomain),
     index("instances_domain_status_idx").on(table.domainStatus),
+    index("instances_setup_completed_idx").on(table.setupCompleted),
   ],
 );
 
-export const instancesRelations = relations(instances, ({ one }) => ({
+export const instancesRelations = relations(instances, ({ one, many }) => ({
   user: one(users, { fields: [instances.userId], references: [users.id] }),
   subscription: one(subscriptions, {
     fields: [instances.subscriptionId],
     references: [subscriptions.id],
+  }),
+  channelConfigs: many(channelConfigs),
+}));
+
+// ─── channel_configs ──────────────────────────────────────────────────────────
+
+export const channelConfigs = pgTable(
+  "channel_configs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instanceId: uuid("instance_id")
+      .notNull()
+      .references(() => instances.id, { onDelete: "cascade" }),
+    type: varchar("type", { length: 20 }).notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    // Encrypted credentials (JSON blob)
+    credentials: jsonb("credentials").$type<Record<string, string>>(),
+    // Channel-specific settings
+    settings: jsonb("settings").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("channel_configs_instance_id_idx").on(table.instanceId),
+    uniqueIndex("channel_configs_instance_type_idx").on(table.instanceId, table.type),
+  ],
+);
+
+export const channelConfigsRelations = relations(channelConfigs, ({ one }) => ({
+  instance: one(instances, {
+    fields: [channelConfigs.instanceId],
+    references: [instances.id],
   }),
 }));

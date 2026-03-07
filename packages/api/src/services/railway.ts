@@ -1,4 +1,4 @@
-import { db, instances } from "@sparkclaw/shared/db";
+import { db, instances, users, subscriptions } from "@sparkclaw/shared/db";
 import {
   INSTANCE_POLL_INTERVAL_MS,
   INSTANCE_POLL_MAX_ATTEMPTS,
@@ -7,6 +7,8 @@ import {
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { getEnv } from "@sparkclaw/shared";
+import { configureOpenClaw } from "./openclaw.js";
+import { sendInstanceReadyEmail } from "./email.js";
 
 const RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 
@@ -42,10 +44,17 @@ export function generateCustomDomain(instanceId: string): string {
   return `${subdomain}.${rootDomain}`;
 }
 
-async function createRailwayService(instanceId: string) {
+// Create Railway service and deploy OpenClaw from template
+async function createRailwayServiceWithTemplate(
+  instanceId: string,
+  environmentId: string,
+  userId: string,
+) {
   const projectId = process.env.RAILWAY_PROJECT_ID!;
+  const env = getEnv();
 
-  const result = await railwayRequest(
+  // Create service
+  const serviceResult = await railwayRequest(
     `mutation($input: ServiceCreateInput!) {
       serviceCreate(input: $input) {
         id
@@ -59,7 +68,98 @@ async function createRailwayService(instanceId: string) {
     },
   );
 
-  return result.data!.serviceCreate.id as string;
+  const serviceId = serviceResult.data!.serviceCreate.id as string;
+  logger.info("Railway service created", { instanceId, serviceId });
+
+  // Connect GitHub repo (OpenClaw template fork)
+  const repo = process.env.OPENCLAW_GITHUB_REPO!;
+  
+  await railwayRequest(
+    `mutation($input: ServiceConnectInput!) {
+      serviceConnect(input: $input) {
+        id
+      }
+    }`,
+    {
+      input: {
+        serviceId,
+        repo,
+        branch: "main",
+      },
+    },
+  );
+
+  logger.info("GitHub repo connected to service", { instanceId, serviceId, repo });
+
+  // Set environment variables for OpenClaw
+  const envVars = {
+    INSTANCE_ID: instanceId,
+    USER_ID: userId,
+    PRISM_BASE_URL: process.env.PRISM_BASE_URL || "",
+    PRISM_API_KEY: process.env.PRISM_API_KEY || "",
+    OPENCLAW_GATEWAY_TOKEN: generateGatewayToken(instanceId),
+    NODE_ENV: "production",
+  };
+
+  for (const [key, value] of Object.entries(envVars)) {
+    await railwayRequest(
+      `mutation($input: VariableUpsertInput!) {
+        variableUpsert(input: $input) {
+          id
+        }
+      }`,
+      {
+        input: {
+          serviceId,
+          environmentId,
+          name: key,
+          value,
+        },
+      },
+    );
+  }
+
+  logger.info("Environment variables set", { instanceId, serviceId, vars: Object.keys(envVars) });
+
+  return serviceId;
+}
+
+// Generate a gateway token for OpenClaw instance
+function generateGatewayToken(instanceId: string): string {
+  // Simple token generation - in production use proper JWT or similar
+  const secret = process.env.SESSION_SECRET!;
+  const data = `${instanceId}:${Date.now()}`;
+  return Buffer.from(`${data}:${secret}`).toString("base64");
+}
+
+// Check deployment status
+async function getDeploymentStatus(serviceId: string, environmentId: string): Promise<{ status: string; url?: string }> {
+  const result = await railwayRequest(
+    `query($serviceId: String!, $environmentId: String!) {
+      service(id: $serviceId) {
+        deployments(environmentId: $environmentId) {
+          edges {
+            node {
+              status
+              url
+            }
+          }
+        }
+      }
+    }`,
+    { serviceId, environmentId },
+  );
+
+  const deployments = result.data?.service?.deployments?.edges;
+  if (!deployments || deployments.length === 0) {
+    return { status: "pending" };
+  }
+
+  const latest = deployments[0].node;
+  return {
+    status: latest.status.toLowerCase(),
+    url: latest.url,
+  };
 }
 
 async function createServiceDomain(serviceId: string, environmentId: string): Promise<string> {
@@ -178,68 +278,166 @@ export async function provisionInstance(
   userId: string,
   subscriptionId: string,
 ): Promise<void> {
+  // Generate custom domain upfront
+  const instanceId = crypto.randomUUID();
+  const customDomain = generateCustomDomain(instanceId);
+  const gatewayToken = generateGatewayToken(instanceId);
+  
   const [instance] = await db
     .insert(instances)
     .values({
+      id: instanceId,
       userId,
       subscriptionId,
       railwayProjectId: process.env.RAILWAY_PROJECT_ID!,
+      customDomain,
       status: "pending",
+      domainStatus: "pending",
     })
     .returning();
+
+  // Get user info for email
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+
+  // Get subscription for plan info
+  const subscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.id, subscriptionId),
+  });
 
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < INSTANCE_PROVISION_MAX_RETRIES; attempt++) {
     try {
-      const serviceId = await createRailwayService(instance.id);
+      // Step 1: Get environment ID
+      const environmentId = await getProjectEnvironmentId();
+      
+      // Step 2: Create Railway service with OpenClaw template
+      logger.info("Creating Railway service with OpenClaw template", { instanceId: instance.id });
+      const serviceId = await createRailwayServiceWithTemplate(
+        instance.id, 
+        environmentId,
+        userId
+      );
 
       await db
         .update(instances)
         .set({ railwayServiceId: serviceId, updatedAt: new Date() })
         .where(eq(instances.id, instance.id));
 
-      logger.info("Railway service created", { instanceId: instance.id, serviceId });
+      // Step 3: Wait for deployment to complete
+      logger.info("Waiting for OpenClaw deployment", { instanceId: instance.id });
+      
+      let deploymentReady = false;
+      for (let poll = 0; poll < INSTANCE_POLL_MAX_ATTEMPTS; poll++) {
+        await sleep(INSTANCE_POLL_INTERVAL_MS);
+        
+        const deployment = await getDeploymentStatus(serviceId, environmentId);
+        
+        if (deployment.status === "success") {
+          deploymentReady = true;
+          logger.info("OpenClaw deployment successful", { 
+            instanceId: instance.id, 
+            url: deployment.url 
+          });
+          break;
+        } else if (deployment.status === "failed") {
+          throw new Error("OpenClaw deployment failed on Railway");
+        }
+      }
+      
+      if (!deploymentReady) {
+        throw new Error("OpenClaw deployment timeout");
+      }
 
-      // Create a domain for the service
-      const environmentId = await getProjectEnvironmentId();
-      const createdDomain = await createServiceDomain(serviceId, environmentId);
-
-      if (createdDomain) {
+      // Step 4: Create Railway domain (internal)
+      const railwayDomain = await createServiceDomain(serviceId, environmentId);
+      
+      if (railwayDomain) {
         await db
           .update(instances)
           .set({
-            url: `https://${createdDomain}`,
-            status: "ready",
+            railwayUrl: `https://${railwayDomain}`,
             updatedAt: new Date(),
           })
           .where(eq(instances.id, instance.id));
 
-        logger.info("Instance provisioned", { instanceId: instance.id, url: `https://${createdDomain}` });
-        return;
+        logger.info("Railway domain created", { instanceId: instance.id, railwayUrl: railwayDomain });
       }
 
-      // Fallback: poll for domain
+      // Step 5: Add custom domain
+      await db
+        .update(instances)
+        .set({ domainStatus: "provisioning", updatedAt: new Date() })
+        .where(eq(instances.id, instance.id));
+
+      await addCustomDomain(serviceId, customDomain);
+      
+      logger.info("Custom domain added to service", { instanceId: instance.id, customDomain });
+
+      // Step 6: Wait for custom domain DNS
+      let domainReady = false;
       for (let poll = 0; poll < INSTANCE_POLL_MAX_ATTEMPTS; poll++) {
         await sleep(INSTANCE_POLL_INTERVAL_MS);
 
-        const domain = await getServiceDomain(serviceId);
-        if (domain) {
-          await db
-            .update(instances)
-            .set({
-              url: `https://${domain}`,
-              status: "ready",
-              updatedAt: new Date(),
-            })
-            .where(eq(instances.id, instance.id));
-
-          logger.info("Instance provisioned via polling", { instanceId: instance.id, url: `https://${domain}` });
-          return;
+        const status = await getCustomDomainStatus(serviceId, customDomain);
+        
+        if (status) {
+          domainReady = true;
+          break;
         }
       }
 
-      throw new Error("Deployment polling timeout - domain not available");
+      if (!domainReady) {
+        throw new Error("Custom domain DNS provisioning timeout");
+      }
+
+      // Step 7: Configure OpenClaw
+      const instanceUrl = `https://${customDomain}`;
+      logger.info("Configuring OpenClaw instance", { instanceId: instance.id, instanceUrl });
+      
+      const configResult = await configureOpenClaw(instanceUrl, {
+        instanceId: instance.id,
+        userId,
+        gatewayToken,
+      });
+
+      if (!configResult.success) {
+        logger.warn("OpenClaw configuration failed, but instance is deployed", {
+          instanceId: instance.id,
+          error: configResult.message,
+        });
+        // Continue anyway - instance is usable, just needs manual config
+      }
+
+      // Step 8: Update instance status
+      await db
+        .update(instances)
+        .set({
+          url: instanceUrl,
+          status: "ready",
+          domainStatus: "ready",
+          updatedAt: new Date(),
+        })
+        .where(eq(instances.id, instance.id));
+
+      logger.info("Instance provisioning complete", { 
+        instanceId: instance.id, 
+        url: instanceUrl 
+      });
+
+      // Step 9: Send welcome email
+      if (user?.email && subscription?.plan) {
+        await sendInstanceReadyEmail({
+          email: user.email,
+          instanceUrl,
+          customDomain,
+          plan: subscription.plan,
+        });
+      }
+
+      return; // Success!
     } catch (err) {
       lastError = err as Error;
       logger.error(`Provisioning attempt ${attempt + 1}/${INSTANCE_PROVISION_MAX_RETRIES} failed`, {
@@ -253,14 +451,26 @@ export async function provisionInstance(
     }
   }
 
+  // All retries failed
   await db
     .update(instances)
     .set({
       status: "error",
+      domainStatus: "error",
       errorMessage: lastError?.message ?? "Unknown provisioning error",
       updatedAt: new Date(),
     })
     .where(eq(instances.id, instance.id));
+
+  // Send error email
+  if (user?.email) {
+    await sendInstanceReadyEmail({
+      email: user.email,
+      instanceUrl: "",
+      customDomain: "",
+      plan: subscription?.plan ?? "unknown",
+    });
+  }
 
   logger.error("Instance provisioning failed after all retries", { instanceId: instance.id });
 }

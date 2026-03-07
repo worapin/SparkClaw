@@ -3,7 +3,7 @@ import { db, subscriptions, instances } from "@sparkclaw/shared/db";
 import { getStripePriceId } from "@sparkclaw/shared/constants";
 import type { Plan } from "@sparkclaw/shared/types";
 import { eq } from "drizzle-orm";
-import { provisionInstance } from "./railway.js";
+import { queueInstanceProvisioning } from "./queue.js";
 import { logger } from "../lib/logger.js";
 
 let _stripe: Stripe | null = null;
@@ -65,9 +65,9 @@ export async function handleCheckoutCompleted(
     })
     .returning();
 
-  // Fire-and-forget: provision instance in background
-  provisionInstance(userId, sub.id).catch((err) => {
-    logger.error("Provisioning failed", { userId, subscriptionId: sub.id, error: (err as Error).message });
+  // Queue instance provisioning for async processing
+  queueInstanceProvisioning(userId, sub.id).catch((err: Error) => {
+    logger.error("Failed to queue provisioning", { userId, subscriptionId: sub.id, error: err.message });
   });
 }
 

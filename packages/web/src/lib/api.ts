@@ -1,4 +1,5 @@
-import type { MeResponse, InstanceResponse, Plan } from "@sparkclaw/shared/types";
+import type { MeResponse, InstanceResponse, Plan, SetupWizardState } from "@sparkclaw/shared/types";
+import type { SaveSetupInput } from "@sparkclaw/shared/schemas";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -48,4 +49,61 @@ export async function createCheckout(plan: Plan) {
     method: "POST",
     body: JSON.stringify({ plan }),
   });
+}
+
+export async function getSetupState() {
+  return request<{ state: SetupWizardState | null }>("/api/setup/state");
+}
+
+export async function saveSetup(data: SaveSetupInput) {
+  return request<{ success: boolean }>("/api/setup/save", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function checkAdmin() {
+  return request<{ isAdmin: boolean; user: { id: string; email: string } | null }>("/api/admin/check");
+}
+
+export async function getAdminStats() {
+  return request<{
+    users: number;
+    instances: number;
+    subscriptions: number;
+    instancesByStatus: Record<string, number>;
+    subscriptionsByPlan: Record<string, number>;
+    recentSignups: number;
+  }>("/api/admin/stats");
+}
+
+export async function getAdminUsers(page: number = 1, search: string = "") {
+  return request<{
+    users: Array<{
+      id: string;
+      email: string;
+      role: string;
+      createdAt: string;
+      subscription: { plan: string; status: string } | null;
+      instance: { status: string; url: string | null } | null;
+    }>;
+    pagination: { page: number; totalPages: number; total: number };
+  }>(`/api/admin/users?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ""}`);
+}
+
+export async function getAdminInstances(page: number = 1, status?: string) {
+  return request<{
+    instances: Array<{
+      id: string;
+      url: string | null;
+      customDomain: string | null;
+      status: string;
+      domainStatus: string;
+      setupCompleted: boolean;
+      createdAt: string;
+      user: { email: string };
+      subscription: { plan: string };
+    }>;
+    pagination: { page: number; totalPages: number; total: number };
+  }>(`/api/admin/instances?page=${page}${status ? `&status=${status}` : ""}`);
 }

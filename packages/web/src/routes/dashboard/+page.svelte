@@ -154,7 +154,21 @@
           {:else if instance.status === "ready"}
             <div class="bg-warm-50 rounded-xl p-4 border border-warm-100 mb-4">
               <div class="text-sm text-warm-500 mb-1">Instance URL</div>
-              <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
+              {#if instance.customDomain && instance.domainStatus === "ready"}
+                <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
+                <div class="text-xs text-warm-400 mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                  Custom domain active
+                </div>
+              {:else if instance.customDomain}
+                <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
+                <div class="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                  Custom domain: {instance.domainStatus}
+                </div>
+              {:else}
+                <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
+              {/if}
             </div>
             <div class="flex gap-3">
               <a href="{instance.url}/setup" target="_blank" rel="noopener" class="btn-lift flex-1 bg-terra-500 text-white py-2.5 rounded-xl font-semibold text-sm text-center hover:bg-terra-600 transition-colors">Open Setup</a>

@@ -5,6 +5,8 @@ import { cors } from "@elysiajs/cors";
 import { authRoutes } from "./routes/auth.js";
 import { apiRoutes } from "./routes/api.js";
 import { webhookRoutes } from "./routes/webhooks.js";
+import { setupRoutes } from "./routes/setup.js";
+import { adminRoutes } from "./routes/admin.js";
 
 const env = validateEnv();
 
@@ -17,6 +19,8 @@ const app = new Elysia()
   .use(authRoutes)
   .use(apiRoutes)
   .use(webhookRoutes)
+  .use(setupRoutes)
+  .use(adminRoutes)
   .listen(env.PORT);
 
 logger.info("SparkClaw API started", { url: app.server?.url?.toString() });
