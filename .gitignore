@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+.svelte-kit/
+.vercel/
+.output/
+build/
+
+# Drizzle generated migrations
+drizzle/migrations/
+
+# Bun
+bun.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+
+# Coverage
+coverage/

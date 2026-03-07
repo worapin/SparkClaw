@@ -1,0 +1,24 @@
+{
+  "name": "@sparkclaw/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js"
+  },
+  "dependencies": {
+    "elysia": "^1.2.0",
+    "@elysiajs/cors": "^1.2.0",
+    "stripe": "^17.6.0",
+    "resend": "^4.1.0",
+    "drizzle-orm": "^0.40.0",
+    "@neondatabase/serverless": "^0.10.0",
+    "@sparkclaw/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "bun-types": "^1.3.0"
+  }
+}
