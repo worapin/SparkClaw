@@ -16,6 +16,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   SENTRY_DSN: z.string().optional(),
   POSTHOG_API_KEY: z.string().optional(),
+  // Custom domain configuration
+  CUSTOM_DOMAIN_ROOT: z.string().min(1).default("sparkclaw.io"),
+  REDIS_URL: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

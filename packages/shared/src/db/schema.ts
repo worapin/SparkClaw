@@ -115,8 +115,14 @@ export const instances = pgTable(
       .references(() => subscriptions.id),
     railwayProjectId: varchar("railway_project_id", { length: 255 }).notNull(),
     railwayServiceId: varchar("railway_service_id", { length: 255 }),
+    // Custom domain (user-facing)
+    customDomain: varchar("custom_domain", { length: 255 }),
+    // Internal Railway domain (hidden from users)
+    railwayUrl: text("railway_url"),
+    // Public URL shown to users (points to custom domain)
     url: text("url"),
     status: varchar("status", { length: 20 }).notNull(),
+    domainStatus: varchar("domain_status", { length: 20 }).default("pending"),
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -125,6 +131,8 @@ export const instances = pgTable(
     index("instances_user_id_idx").on(table.userId),
     uniqueIndex("instances_subscription_id_idx").on(table.subscriptionId),
     index("instances_status_idx").on(table.status),
+    uniqueIndex("instances_custom_domain_idx").on(table.customDomain),
+    index("instances_domain_status_idx").on(table.domainStatus),
   ],
 );
 

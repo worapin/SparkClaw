@@ -6,6 +6,7 @@ import {
 } from "@sparkclaw/shared/constants";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
+import { getEnv } from "@sparkclaw/shared";
 
 const RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 
@@ -30,6 +31,15 @@ async function railwayRequest(query: string, variables: Record<string, unknown> 
   }
 
   return json;
+}
+
+// Generate a unique custom domain for the instance
+export function generateCustomDomain(instanceId: string): string {
+  const env = getEnv();
+  const rootDomain = env.CUSTOM_DOMAIN_ROOT;
+  // Create subdomain like "claw-a1b2c3d4.sparkclaw.io"
+  const subdomain = `claw-${instanceId.slice(0, 8)}`.toLowerCase();
+  return `${subdomain}.${rootDomain}`;
 }
 
 async function createRailwayService(instanceId: string) {
@@ -68,6 +78,54 @@ async function createServiceDomain(serviceId: string, environmentId: string): Pr
   );
 
   return result.data!.serviceDomainCreate.domain as string;
+}
+
+// Add custom domain to Railway service
+async function addCustomDomain(serviceId: string, domain: string): Promise<void> {
+  await railwayRequest(
+    `mutation($input: CustomDomainCreateInput!) {
+      customDomainCreate(input: $input) {
+        id
+        domain
+        status {
+          dnsStatus
+        }
+      }
+    }`,
+    {
+      input: {
+        serviceId,
+        domain,
+      },
+    },
+  );
+
+  logger.info("Custom domain added to Railway service", { serviceId, domain });
+}
+
+// Get custom domain status from Railway
+async function getCustomDomainStatus(serviceId: string, domain: string): Promise<{ dnsStatus: string } | null> {
+  const result = await railwayRequest(
+    `query($serviceId: String!) {
+      service(id: $serviceId) {
+        customDomains {
+          domain
+          status {
+            dnsStatus
+          }
+        }
+      }
+    }`,
+    { serviceId },
+  );
+
+  const domains = result.data?.service?.customDomains;
+  if (!domains || domains.length === 0) return null;
+  
+  const customDomain = domains.find((d: any) => d.domain === domain);
+  if (!customDomain) return null;
+  
+  return { dnsStatus: customDomain.status?.dnsStatus };
 }
 
 async function getServiceDomain(serviceId: string): Promise<string | null> {

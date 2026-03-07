@@ -28,6 +28,7 @@ export type NewInstance = InferInsertModel<typeof instances>;
 export type Plan = "starter" | "pro" | "scale";
 export type SubscriptionStatus = "active" | "canceled" | "past_due";
 export type InstanceStatus = "pending" | "ready" | "error" | "suspended";
+export type DomainStatus = "pending" | "provisioning" | "ready" | "error";
 
 // ─── API response types ─────────────────────────────────────────────────────
 

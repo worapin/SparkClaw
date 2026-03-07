@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SparkClaw - Design Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        warm: {
+          50: '#FAFAF8',
+          100: '#F5F4F0',
+          200: '#E8E6E0',
+          300: '#D4D0C8',
+          400: '#B0AAA0',
+          500: '#8C8578',
+          600: '#6B6458',
+          700: '#4A453C',
+          800: '#2E2A24',
+          900: '#1A1714',
+        },
+        terra: {
+          50: '#FFF5F0',
+          100: '#FFE8DB',
+          200: '#FFD0B5',
+          300: '#FFB088',
+          400: '#FF8F5C',
+          500: '#E8632B',
+          600: '#C44D1A',
+          700: '#9C3A12',
+          800: '#742B0E',
+          900: '#4D1C09',
+        },
+      },
+      fontFamily: {
+        display: ['DM Serif Display', 'Georgia', 'serif'],
+        body: ['Outfit', 'system-ui', 'sans-serif'],
+      },
+    },
+  },
+}
+</script>
+<style>
+  body { font-family: 'Outfit', system-ui, sans-serif; }
+  .font-display { font-family: 'DM Serif Display', Georgia, serif; }
+
+  /* Hand-drawn underline */
+  .hand-underline {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 12'%3E%3Cpath d='M2 8 Q50 2 100 7 T198 5' stroke='%23E8632B' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: bottom;
+    background-size: 100% 12px;
+    padding-bottom: 8px;
+  }
+
+  /* Grain texture overlay */
+  .grain::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* Smooth page transitions */
+  .page { display: none; animation: fadeIn 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Stagger animation */
+  .stagger > * { opacity: 0; animation: staggerIn 0.5s ease forwards; }
+  .stagger > *:nth-child(1) { animation-delay: 0.05s; }
+  .stagger > *:nth-child(2) { animation-delay: 0.1s; }
+  .stagger > *:nth-child(3) { animation-delay: 0.15s; }
+  .stagger > *:nth-child(4) { animation-delay: 0.2s; }
+  .stagger > *:nth-child(5) { animation-delay: 0.25s; }
+  .stagger > *:nth-child(6) { animation-delay: 0.3s; }
+  @keyframes staggerIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Button hover lift */
+  .btn-lift { transition: all 0.2s ease; }
+  .btn-lift:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232, 99, 43, 0.25); }
+
+  /* Card hover */
+  .card-hover { transition: all 0.25s ease; }
+  .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.08); }
+
+  /* Decorative squiggle divider */
+  .squiggle-divider {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 20'%3E%3Cpath d='M0 10 Q25 0 50 10 T100 10 T150 10 T200 10 T250 10 T300 10 T350 10 T400 10 T450 10 T500 10 T550 10 T600 10' stroke='%23D4D0C8' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");
+    background-repeat: repeat-x;
+    background-position: center;
+    height: 20px;
+  }
+
+  /* Mockup navigation bar */
+  #mockup-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10000;
+    background: #1A1714;
+    color: white;
+    padding: 10px 16px;
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-size: 13px;
+  }
+  #mockup-nav button {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #4A453C;
+    background: transparent;
+    color: #D4D0C8;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #mockup-nav button:hover, #mockup-nav button.active {
+    background: #E8632B;
+    border-color: #E8632B;
+    color: white;
+  }
+
+  /* FAQ details styling */
+  details summary { cursor: pointer; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: '+'; margin-right: 12px; font-weight: 600; color: #E8632B; font-size: 1.2em; }
+  details[open] summary::before { content: '-'; }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #F5F4F0; }
+  ::-webkit-scrollbar-thumb { background: #D4D0C8; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #B0AAA0; }
+
+  /* Status badge pulse */
+  @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+</style>
+</head>
+<body class="bg-warm-50 text-warm-900 grain" style="padding-bottom: 60px;">
+
+<!-- ============================================ -->
+<!-- NAVBAR (shared across all pages)             -->
+<!-- ============================================ -->
+<nav class="fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-warm-50/80 border-b border-warm-200">
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <!-- Logo -->
+    <a onclick="showPage('home')" class="flex items-center gap-2.5 cursor-pointer group">
+      <div class="w-8 h-8 bg-terra-500 rounded-lg flex items-center justify-center group-hover:rotate-6 transition-transform">
+        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+      </div>
+      <span class="font-display text-xl text-warm-900">SparkClaw</span>
+    </a>
+
+    <!-- Nav links -->
+    <div class="hidden md:flex items-center gap-8 text-sm font-medium text-warm-600">
+      <a onclick="showPage('pricing')" class="hover:text-warm-900 cursor-pointer transition-colors">Pricing</a>
+      <a onclick="showPage('docs')" class="hover:text-warm-900 cursor-pointer transition-colors">Docs</a>
+    </div>
+
+    <!-- Right -->
+    <div class="flex items-center gap-3">
+      <button onclick="showPage('auth')" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5">Log in</button>
+      <button onclick="showPage('pricing')" class="text-sm font-semibold bg-warm-900 text-warm-50 px-4 py-2 rounded-lg hover:bg-warm-800 transition-colors">Get Started</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================ -->
+<!-- PAGE: HOME                                   -->
+<!-- ============================================ -->
+<div id="page-home" class="page active">
+  <!-- Hero -->
+  <section class="pt-32 pb-20 px-6">
+    <div class="max-w-4xl mx-auto text-center stagger">
+      <div class="inline-block mb-6 px-4 py-1.5 bg-terra-50 text-terra-600 rounded-full text-sm font-medium border border-terra-100">
+        Powered by OpenClaw (270k+ stars)
+      </div>
+      <h1 class="font-display text-5xl md:text-7xl leading-tight tracking-tight mb-6">
+        Launch your own<br><span class="hand-underline text-terra-500">AI assistant</span> in minutes
+      </h1>
+      <p class="text-lg md:text-xl text-warm-500 max-w-2xl mx-auto mb-10 leading-relaxed">
+        We host OpenClaw on modern cloud infrastructure for you. Connect Telegram, Discord, LINE, and 25+ channels. Zero DevOps required.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <button onclick="showPage('pricing')" class="btn-lift bg-terra-500 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-terra-600 transition-colors">
+          Start for $19/mo
+        </button>
+        <button onclick="showPage('docs')" class="bg-warm-100 text-warm-700 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-warm-200 transition-colors border border-warm-200">
+          Read the docs
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Logos / trust -->
+  <section class="pb-16 px-6">
+    <div class="max-w-4xl mx-auto text-center">
+      <p class="text-sm text-warm-400 uppercase tracking-widest mb-6 font-medium">Built on technology trusted by</p>
+      <div class="flex items-center justify-center gap-10 flex-wrap text-warm-300 text-2xl font-display italic">
+        <span>Stripe</span>
+        <span class="text-warm-200">|</span>
+        <span>Railway</span>
+        <span class="text-warm-200">|</span>
+        <span>Neon</span>
+        <span class="text-warm-200">|</span>
+        <span>OpenClaw</span>
+      </div>
+    </div>
+  </section>
+
+  <div class="squiggle-divider max-w-2xl mx-auto"></div>
+
+  <!-- Features -->
+  <section class="py-20 px-6">
+    <div class="max-w-6xl mx-auto">
+      <div class="text-center mb-16 stagger">
+        <h2 class="font-display text-3xl md:text-4xl mb-4">Everything you need,<br>nothing you don't</h2>
+        <p class="text-warm-500 text-lg">From signup to a running AI assistant in under 5 minutes.</p>
+      </div>
+      <div class="grid md:grid-cols-2 gap-6 stagger">
+        <!-- Feature 1 -->
+        <div class="card-hover bg-white rounded-2xl p-8 border border-warm-200">
+          <div class="w-12 h-12 bg-terra-50 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-terra-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="font-display text-xl mb-2">Instant Provisioning</h3>
+          <p class="text-warm-500 leading-relaxed">Subscribe and your OpenClaw instance is automatically deployed. No VPS, no Docker, no Railway config. Just your AI assistant, ready to go.</p>
+        </div>
+        <!-- Feature 2 -->
+        <div class="card-hover bg-white rounded-2xl p-8 border border-warm-200">
+          <div class="w-12 h-12 bg-terra-50 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-terra-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          </div>
+          <h3 class="font-display text-xl mb-2">25+ Channels</h3>
+          <p class="text-warm-500 leading-relaxed">Telegram, Discord, LINE, WhatsApp, Slack, Facebook Messenger, and more. One instance, every platform your users are on.</p>
+        </div>
+        <!-- Feature 3 -->
+        <div class="card-hover bg-white rounded-2xl p-8 border border-warm-200">
+          <div class="w-12 h-12 bg-terra-50 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-terra-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3 class="font-display text-xl mb-2">Managed & Secure</h3>
+          <p class="text-warm-500 leading-relaxed">SSL, backups, monitoring, and auto-updates handled for you. Each user gets a fully isolated container. Your data stays yours.</p>
+        </div>
+        <!-- Feature 4 -->
+        <div class="card-hover bg-white rounded-2xl p-8 border border-warm-200">
+          <div class="w-12 h-12 bg-terra-50 rounded-xl flex items-center justify-center mb-5">
+            <svg class="w-6 h-6 text-terra-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3 class="font-display text-xl mb-2">Predictable Pricing</h3>
+          <p class="text-warm-500 leading-relaxed">Simple monthly plans starting at $19. No surprise compute bills, no hidden fees. Cancel anytime, your data kept for 30 days.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="py-16 px-6 bg-warm-900 text-warm-50">
+    <div class="max-w-4xl mx-auto">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center stagger">
+        <div>
+          <div class="font-display text-4xl md:text-5xl text-terra-400 mb-2">270k+</div>
+          <div class="text-warm-400 text-sm">GitHub Stars</div>
+        </div>
+        <div>
+          <div class="font-display text-4xl md:text-5xl text-terra-400 mb-2">25+</div>
+          <div class="text-warm-400 text-sm">Channels</div>
+        </div>
+        <div>
+          <div class="font-display text-4xl md:text-5xl text-terra-400 mb-2">&lt;5m</div>
+          <div class="text-warm-400 text-sm">Setup Time</div>
+        </div>
+        <div>
+          <div class="font-display text-4xl md:text-5xl text-terra-400 mb-2">99.9%</div>
+          <div class="text-warm-400 text-sm">Uptime SLA</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="py-20 px-6">
+    <div class="max-w-2xl mx-auto">
+      <h2 class="font-display text-3xl md:text-4xl text-center mb-12">Frequently asked</h2>
+      <div class="space-y-4 stagger">
+        <details class="bg-white rounded-xl border border-warm-200 px-6 py-5 group">
+          <summary class="font-medium text-warm-800 flex items-center">What is OpenClaw?</summary>
+          <p class="mt-3 text-warm-500 leading-relaxed pl-7">OpenClaw is an open-source AI assistant framework with 270k+ GitHub stars, supporting 25+ messaging channels. SparkClaw hosts it for you.</p>
+        </details>
+        <details class="bg-white rounded-xl border border-warm-200 px-6 py-5">
+          <summary class="font-medium text-warm-800 flex items-center">Can I bring my own LLM API keys?</summary>
+          <p class="mt-3 text-warm-500 leading-relaxed pl-7">In V0, instances use our managed LLM gateway (Prism). BYOK support is on the roadmap.</p>
+        </details>
+        <details class="bg-white rounded-xl border border-warm-200 px-6 py-5">
+          <summary class="font-medium text-warm-800 flex items-center">What happens if I cancel?</summary>
+          <p class="mt-3 text-warm-500 leading-relaxed pl-7">Your instance is suspended but your data is kept for 30 days. Re-subscribe to restore it.</p>
+        </details>
+        <details class="bg-white rounded-xl border border-warm-200 px-6 py-5">
+          <summary class="font-medium text-warm-800 flex items-center">Which LLM models are supported?</summary>
+          <p class="mt-3 text-warm-500 leading-relaxed pl-7">GPT-4o, Claude, Qwen 2.5, and more via our Prism gateway. Model selection available in setup.</p>
+        </details>
+        <details class="bg-white rounded-xl border border-warm-200 px-6 py-5">
+          <summary class="font-medium text-warm-800 flex items-center">Is my data private?</summary>
+          <p class="mt-3 text-warm-500 leading-relaxed pl-7">Each user gets a fully isolated container. Your data is never shared with other users.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: AUTH                                    -->
+<!-- ============================================ -->
+<div id="page-auth" class="page">
+  <section class="pt-32 pb-20 px-6 min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md">
+      <div class="text-center mb-8 stagger">
+        <div class="w-14 h-14 bg-terra-500 rounded-2xl flex items-center justify-center mx-auto mb-5">
+          <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+        </div>
+        <h1 class="font-display text-3xl mb-2">Welcome back</h1>
+        <p class="text-warm-500">Sign in with a magic code sent to your email</p>
+      </div>
+
+      <!-- Email step -->
+      <div id="auth-email" class="bg-white rounded-2xl border border-warm-200 p-8 shadow-sm">
+        <label class="block text-sm font-medium text-warm-700 mb-2">Email address</label>
+        <input type="email" placeholder="you@example.com" class="w-full px-4 py-3 rounded-xl border border-warm-200 bg-warm-50 text-warm-900 placeholder-warm-400 focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500 transition-all text-base" />
+        <button onclick="document.getElementById('auth-email').style.display='none';document.getElementById('auth-otp').style.display='block';" class="btn-lift w-full mt-4 bg-terra-500 text-white py-3 rounded-xl font-semibold hover:bg-terra-600 transition-colors">
+          Send Code
+        </button>
+      </div>
+
+      <!-- OTP step (hidden initially) -->
+      <div id="auth-otp" class="bg-white rounded-2xl border border-warm-200 p-8 shadow-sm" style="display:none;">
+        <p class="text-sm text-warm-500 mb-4">We sent a 6-digit code to <strong class="text-warm-900">you@example.com</strong></p>
+        <label class="block text-sm font-medium text-warm-700 mb-2">Verification code</label>
+        <input type="text" placeholder="000000" maxlength="6" class="w-full px-4 py-3 rounded-xl border border-warm-200 bg-warm-50 text-warm-900 placeholder-warm-400 focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500 transition-all text-center text-2xl tracking-[0.5em] font-mono" />
+        <button onclick="showPage('dashboard')" class="btn-lift w-full mt-4 bg-terra-500 text-white py-3 rounded-xl font-semibold hover:bg-terra-600 transition-colors">
+          Verify
+        </button>
+        <button onclick="document.getElementById('auth-otp').style.display='none';document.getElementById('auth-email').style.display='block';" class="w-full mt-3 text-sm text-warm-500 hover:text-warm-700 transition-colors">
+          Use a different email
+        </button>
+      </div>
+
+      <p class="text-center text-sm text-warm-400 mt-6">No password needed. We'll email you a magic code.</p>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: DASHBOARD                              -->
+<!-- ============================================ -->
+<div id="page-dashboard" class="page">
+  <section class="pt-24 pb-20 px-6">
+    <div class="max-w-4xl mx-auto">
+      <!-- Dashboard header -->
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h1 class="font-display text-3xl">Dashboard</h1>
+          <p class="text-warm-500 mt-1">Welcome back, creator@example.com</p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="showPage('account')" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-2 rounded-lg hover:bg-warm-100">Settings</button>
+          <button onclick="showPage('home')" class="text-sm font-medium text-warm-500 hover:text-warm-900 transition-colors px-3 py-2 rounded-lg hover:bg-warm-100">Log out</button>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6 stagger">
+        <!-- Subscription card -->
+        <div class="md:col-span-1 bg-white rounded-2xl border border-warm-200 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-display text-lg">Plan</h2>
+            <span class="text-xs font-semibold bg-green-50 text-green-700 px-2.5 py-1 rounded-full">Active</span>
+          </div>
+          <div class="mb-4">
+            <div class="font-display text-3xl text-terra-500">Pro</div>
+            <div class="text-warm-500 text-sm mt-1">$39/mo &middot; Renews Apr 7</div>
+          </div>
+          <button onclick="showPage('account')" class="w-full text-sm font-medium text-warm-600 border border-warm-200 rounded-lg py-2 hover:bg-warm-50 transition-colors">
+            Manage plan
+          </button>
+        </div>
+
+        <!-- Instance card -->
+        <div class="md:col-span-2 bg-white rounded-2xl border border-warm-200 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="font-display text-lg">Instance</h2>
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 bg-green-500 rounded-full pulse-dot"></span>
+              <span class="text-xs font-semibold text-green-700">Ready</span>
+            </div>
+          </div>
+          <div class="bg-warm-50 rounded-xl p-4 border border-warm-100 mb-4">
+            <div class="text-sm text-warm-500 mb-1">Instance URL</div>
+            <a href="#" class="text-terra-500 font-medium hover:underline break-all">https://openclaw-a1b2c3d4.up.railway.app</a>
+          </div>
+          <div class="flex gap-3">
+            <button class="btn-lift flex-1 bg-terra-500 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-terra-600 transition-colors">
+              Open Setup
+            </button>
+            <button class="flex-1 bg-warm-100 text-warm-700 py-2.5 rounded-xl font-semibold text-sm hover:bg-warm-200 transition-colors border border-warm-200">
+              Open Console
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="mt-8">
+        <h2 class="font-display text-xl mb-4">Quick start</h2>
+        <div class="grid md:grid-cols-3 gap-4 stagger">
+          <div class="card-hover bg-white rounded-xl border border-warm-200 p-5 cursor-pointer" onclick="showPage('docs')">
+            <div class="text-2xl mb-2">&#x1f4ac;</div>
+            <h3 class="font-semibold text-sm mb-1">Connect Telegram</h3>
+            <p class="text-warm-500 text-xs">Set up your first channel in 2 minutes</p>
+          </div>
+          <div class="card-hover bg-white rounded-xl border border-warm-200 p-5 cursor-pointer" onclick="showPage('docs')">
+            <div class="text-2xl mb-2">&#x1f916;</div>
+            <h3 class="font-semibold text-sm mb-1">Configure LLM</h3>
+            <p class="text-warm-500 text-xs">Choose your AI model and persona</p>
+          </div>
+          <div class="card-hover bg-white rounded-xl border border-warm-200 p-5 cursor-pointer" onclick="showPage('docs')">
+            <div class="text-2xl mb-2">&#x1f4d6;</div>
+            <h3 class="font-semibold text-sm mb-1">Read the docs</h3>
+            <p class="text-warm-500 text-xs">Full guide to get the most from OpenClaw</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: PRICING                                -->
+<!-- ============================================ -->
+<div id="page-pricing" class="page">
+  <section class="pt-32 pb-20 px-6">
+    <div class="max-w-5xl mx-auto">
+      <div class="text-center mb-16 stagger">
+        <h1 class="font-display text-4xl md:text-5xl mb-4">Simple, <span class="hand-underline">honest</span> pricing</h1>
+        <p class="text-warm-500 text-lg max-w-lg mx-auto">Launch your own OpenClaw instance. No hidden fees. Cancel anytime.</p>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-6 stagger">
+        <!-- Starter -->
+        <div class="card-hover bg-white rounded-2xl border border-warm-200 p-8 flex flex-col">
+          <h3 class="font-display text-2xl mb-1">Starter</h3>
+          <p class="text-warm-500 text-sm mb-6">For trying things out</p>
+          <div class="mb-6">
+            <span class="font-display text-5xl">$19</span>
+            <span class="text-warm-500">/mo</span>
+          </div>
+          <ul class="space-y-3 mb-8 flex-1">
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              1 OpenClaw instance
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              All 25+ channels
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Prism LLM gateway
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Community support
+            </li>
+          </ul>
+          <button onclick="showPage('auth')" class="w-full py-3 rounded-xl font-semibold border-2 border-warm-200 text-warm-700 hover:border-warm-300 hover:bg-warm-50 transition-all">
+            Get Started
+          </button>
+        </div>
+
+        <!-- Pro (Popular) -->
+        <div class="card-hover bg-warm-900 text-warm-50 rounded-2xl p-8 flex flex-col relative ring-2 ring-terra-500 shadow-xl">
+          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-terra-500 text-white text-xs font-bold px-4 py-1 rounded-full">
+            POPULAR
+          </div>
+          <h3 class="font-display text-2xl mb-1">Pro</h3>
+          <p class="text-warm-400 text-sm mb-6">For creators and indie devs</p>
+          <div class="mb-6">
+            <span class="font-display text-5xl">$39</span>
+            <span class="text-warm-400">/mo</span>
+          </div>
+          <ul class="space-y-3 mb-8 flex-1">
+            <li class="flex items-start gap-3 text-sm text-warm-200">
+              <svg class="w-5 h-5 text-terra-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Everything in Starter
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-200">
+              <svg class="w-5 h-5 text-terra-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Priority support
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-200">
+              <svg class="w-5 h-5 text-terra-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Custom domain (soon)
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-200">
+              <svg class="w-5 h-5 text-terra-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Advanced analytics
+            </li>
+          </ul>
+          <button onclick="showPage('auth')" class="btn-lift w-full py-3 rounded-xl font-semibold bg-terra-500 text-white hover:bg-terra-600 transition-colors">
+            Get Started
+          </button>
+        </div>
+
+        <!-- Scale -->
+        <div class="card-hover bg-white rounded-2xl border border-warm-200 p-8 flex flex-col">
+          <h3 class="font-display text-2xl mb-1">Scale</h3>
+          <p class="text-warm-500 text-sm mb-6">For agencies and growing teams</p>
+          <div class="mb-6">
+            <span class="font-display text-5xl">$79</span>
+            <span class="text-warm-500">/mo</span>
+          </div>
+          <ul class="space-y-3 mb-8 flex-1">
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Everything in Pro
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Higher resources
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Custom domain (soon)
+            </li>
+            <li class="flex items-start gap-3 text-sm text-warm-600">
+              <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              Dedicated support
+            </li>
+          </ul>
+          <button onclick="showPage('auth')" class="w-full py-3 rounded-xl font-semibold border-2 border-warm-200 text-warm-700 hover:border-warm-300 hover:bg-warm-50 transition-all">
+            Get Started
+          </button>
+        </div>
+      </div>
+
+      <p class="text-center text-warm-400 text-sm mt-8">All plans include SSL, backups, monitoring, and auto-updates.</p>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: ACCOUNT / SETTINGS                     -->
+<!-- ============================================ -->
+<div id="page-account" class="page">
+  <section class="pt-24 pb-20 px-6">
+    <div class="max-w-2xl mx-auto stagger">
+      <h1 class="font-display text-3xl mb-8">Account Settings</h1>
+
+      <!-- Profile -->
+      <div class="bg-white rounded-2xl border border-warm-200 p-6 mb-6">
+        <h2 class="font-display text-lg mb-4">Profile</h2>
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-14 h-14 bg-terra-100 text-terra-600 rounded-full flex items-center justify-center font-display text-xl">C</div>
+          <div>
+            <div class="font-medium">creator@example.com</div>
+            <div class="text-warm-500 text-sm">Member since March 2026</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Plan -->
+      <div class="bg-white rounded-2xl border border-warm-200 p-6 mb-6">
+        <h2 class="font-display text-lg mb-4">Subscription</h2>
+        <div class="flex items-center justify-between p-4 bg-warm-50 rounded-xl border border-warm-100 mb-4">
+          <div>
+            <div class="font-semibold text-lg">Pro Plan</div>
+            <div class="text-warm-500 text-sm">$39/mo &middot; Next billing Apr 7, 2026</div>
+          </div>
+          <span class="text-xs font-semibold bg-green-50 text-green-700 px-2.5 py-1 rounded-full">Active</span>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="showPage('pricing')" class="flex-1 text-sm font-medium text-warm-700 border border-warm-200 rounded-lg py-2.5 hover:bg-warm-50 transition-colors">
+            Change plan
+          </button>
+          <button class="flex-1 text-sm font-medium text-warm-700 border border-warm-200 rounded-lg py-2.5 hover:bg-warm-50 transition-colors">
+            Billing portal
+          </button>
+        </div>
+      </div>
+
+      <!-- Danger zone -->
+      <div class="bg-white rounded-2xl border border-red-200 p-6">
+        <h2 class="font-display text-lg mb-2 text-red-700">Danger Zone</h2>
+        <p class="text-warm-500 text-sm mb-4">Canceling your subscription will suspend your instance. Your data is kept for 30 days.</p>
+        <button class="text-sm font-medium text-red-600 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors">
+          Cancel subscription
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: DOCS / GETTING STARTED                 -->
+<!-- ============================================ -->
+<div id="page-docs" class="page">
+  <section class="pt-24 pb-20 px-6">
+    <div class="max-w-3xl mx-auto">
+      <div class="mb-12 stagger">
+        <div class="inline-block mb-4 px-3 py-1 bg-terra-50 text-terra-600 rounded-full text-xs font-semibold uppercase tracking-wider">Documentation</div>
+        <h1 class="font-display text-4xl mb-3">Getting Started</h1>
+        <p class="text-warm-500 text-lg">Go from zero to a running AI assistant in 3 steps.</p>
+      </div>
+
+      <div class="space-y-8 stagger">
+        <!-- Step 1 -->
+        <div class="bg-white rounded-2xl border border-warm-200 p-8">
+          <div class="flex items-start gap-5">
+            <div class="w-10 h-10 bg-terra-500 text-white rounded-full flex items-center justify-center font-display text-lg flex-shrink-0">1</div>
+            <div class="flex-1">
+              <h3 class="font-display text-xl mb-2">Create your account</h3>
+              <p class="text-warm-500 leading-relaxed mb-4">Sign up with your email. We use passwordless magic codes -- no password to remember.</p>
+              <button onclick="showPage('auth')" class="text-sm font-semibold text-terra-500 hover:text-terra-600 transition-colors">Sign up now &rarr;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="bg-white rounded-2xl border border-warm-200 p-8">
+          <div class="flex items-start gap-5">
+            <div class="w-10 h-10 bg-terra-500 text-white rounded-full flex items-center justify-center font-display text-lg flex-shrink-0">2</div>
+            <div class="flex-1">
+              <h3 class="font-display text-xl mb-2">Choose a plan & subscribe</h3>
+              <p class="text-warm-500 leading-relaxed mb-4">Pick Starter ($19), Pro ($39), or Scale ($79). Your OpenClaw instance is automatically provisioned within about a minute.</p>
+              <button onclick="showPage('pricing')" class="text-sm font-semibold text-terra-500 hover:text-terra-600 transition-colors">See pricing &rarr;</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="bg-white rounded-2xl border border-warm-200 p-8">
+          <div class="flex items-start gap-5">
+            <div class="w-10 h-10 bg-terra-500 text-white rounded-full flex items-center justify-center font-display text-lg flex-shrink-0">3</div>
+            <div class="flex-1">
+              <h3 class="font-display text-xl mb-2">Connect your channels</h3>
+              <p class="text-warm-500 leading-relaxed mb-4">Open your instance's setup page and follow the wizard to connect Telegram, Discord, LINE, or any other channel.</p>
+
+              <div class="bg-warm-900 rounded-xl p-5 mt-4">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-warm-500 text-xs font-mono">Telegram Bot Setup</span>
+                </div>
+                <pre class="text-sm text-warm-200 font-mono overflow-x-auto leading-relaxed"><code>1. Open @BotFather on Telegram
+2. Send /newbot and follow prompts
+3. Copy the bot token
+4. Paste it in your OpenClaw setup page
+5. Done! Your bot is live.</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional resources -->
+      <div class="mt-12 p-6 bg-warm-100 rounded-2xl border border-warm-200">
+        <h3 class="font-display text-lg mb-3">Need more help?</h3>
+        <div class="grid md:grid-cols-2 gap-4">
+          <a href="#" class="flex items-center gap-3 text-warm-700 hover:text-terra-500 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span class="text-sm font-medium">OpenClaw Documentation</span>
+          </a>
+          <a href="#" class="flex items-center gap-3 text-warm-700 hover:text-terra-500 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            <span class="text-sm font-medium">Community Discord</span>
+          </a>
+          <a href="#" class="flex items-center gap-3 text-warm-700 hover:text-terra-500 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <span class="text-sm font-medium">Email support</span>
+          </a>
+          <a href="#" class="flex items-center gap-3 text-warm-700 hover:text-terra-500 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            <span class="text-sm font-medium">GitHub Repository</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- PAGE: 404                                    -->
+<!-- ============================================ -->
+<div id="page-404" class="page">
+  <section class="pt-32 pb-20 px-6 min-h-screen flex items-center justify-center">
+    <div class="text-center stagger">
+      <div class="font-display text-[10rem] leading-none text-warm-200 mb-4 select-none" style="letter-spacing: -0.05em;">404</div>
+      <h1 class="font-display text-3xl mb-3">Page not found</h1>
+      <p class="text-warm-500 text-lg mb-8 max-w-md mx-auto">The page you're looking for doesn't exist or has been moved. Let's get you back on track.</p>
+      <button onclick="showPage('home')" class="btn-lift bg-terra-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-terra-600 transition-colors">
+        Back to Home
+      </button>
+    </div>
+  </section>
+</div>
+
+<!-- ============================================ -->
+<!-- FOOTER (shared across all pages)             -->
+<!-- ============================================ -->
+<footer class="bg-warm-900 text-warm-400 pt-16 pb-8 px-6">
+  <div class="max-w-6xl mx-auto">
+    <div class="grid md:grid-cols-4 gap-10 mb-12">
+      <!-- Brand -->
+      <div class="md:col-span-1">
+        <div class="flex items-center gap-2.5 mb-4">
+          <div class="w-7 h-7 bg-terra-500 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <span class="font-display text-lg text-warm-200">SparkClaw</span>
+        </div>
+        <p class="text-sm text-warm-500 leading-relaxed">Managed OpenClaw hosting.<br>Zero DevOps. Just build.</p>
+      </div>
+
+      <!-- Product -->
+      <div>
+        <h4 class="font-semibold text-warm-200 text-sm uppercase tracking-wider mb-4">Product</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li><a onclick="showPage('pricing')" class="hover:text-warm-200 cursor-pointer transition-colors">Pricing</a></li>
+          <li><a onclick="showPage('docs')" class="hover:text-warm-200 cursor-pointer transition-colors">Documentation</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">Changelog</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">Status</a></li>
+        </ul>
+      </div>
+
+      <!-- Resources -->
+      <div>
+        <h4 class="font-semibold text-warm-200 text-sm uppercase tracking-wider mb-4">Resources</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">OpenClaw Docs</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">Community</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">Blog</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">GitHub</a></li>
+        </ul>
+      </div>
+
+      <!-- Legal -->
+      <div>
+        <h4 class="font-semibold text-warm-200 text-sm uppercase tracking-wider mb-4">Legal</h4>
+        <ul class="space-y-2.5 text-sm">
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">Privacy Policy</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">Terms of Service</a></li>
+          <li><a class="hover:text-warm-200 cursor-pointer transition-colors">DPA</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="squiggle-divider opacity-20 mb-6"></div>
+
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-warm-600">
+      <span>&copy; 2026 WiseSpark Co., Ltd. All rights reserved.</span>
+      <span>Powered by <a class="text-terra-500 hover:text-terra-400 transition-colors cursor-pointer">OpenClaw</a> &middot; Hosted on <a class="text-terra-500 hover:text-terra-400 transition-colors cursor-pointer">Railway</a></span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================ -->
+<!-- MOCKUP PAGE SWITCHER (bottom bar)            -->
+<!-- ============================================ -->
+<div id="mockup-nav">
+  <span style="color:#8C8578;margin-right:8px;font-size:11px;align-self:center;">PAGES:</span>
+  <button class="active" onclick="showPage('home')">Home</button>
+  <button onclick="showPage('auth')">Auth</button>
+  <button onclick="showPage('dashboard')">Dashboard</button>
+  <button onclick="showPage('pricing')">Pricing</button>
+  <button onclick="showPage('account')">Account</button>
+  <button onclick="showPage('docs')">Docs</button>
+  <button onclick="showPage('404')">404</button>
+</div>
+
+<script>
+function showPage(id) {
+  // Hide all pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  // Show target page
+  const target = document.getElementById('page-' + id);
+  if (target) {
+    target.classList.add('active');
+    // Re-trigger animations
+    target.querySelectorAll('.stagger > *').forEach(el => {
+      el.style.animation = 'none';
+      el.offsetHeight; // trigger reflow
+      el.style.animation = '';
+    });
+  }
+  // Update nav buttons
+  document.querySelectorAll('#mockup-nav button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Reset auth form
+  if (id === 'auth') {
+    document.getElementById('auth-email').style.display = 'block';
+    document.getElementById('auth-otp').style.display = 'none';
+  }
+}
+</script>
+
+</body>
+</html>
