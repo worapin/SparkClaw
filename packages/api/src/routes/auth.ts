@@ -6,6 +6,7 @@ import { createSession, deleteSession } from "../services/session.js";
 import { sendOtpEmail } from "../lib/email.js";
 import { csrfMiddleware } from "../middleware/csrf.js";
 import { RateLimiter } from "../lib/rate-limiter.js";
+import { trackEvent, identifyUser } from "../lib/observability.js";
 
 const sendOtpLimiter = new RateLimiter(OTP_SEND_RATE_LIMIT, OTP_SEND_RATE_WINDOW_MS);
 const verifyOtpLimiter = new RateLimiter(OTP_VERIFY_RATE_LIMIT, OTP_VERIFY_RATE_WINDOW_MS);
@@ -36,6 +37,9 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     await createOtpRecord(parsed.data.email, codeHash);
     await sendOtpEmail(parsed.data.email, code);
 
+    // Track OTP sent
+    trackEvent(parsed.data.email, "otp_sent", { method: "email" });
+
     return { ok: true };
   })
   .post("/verify-otp", async ({ body, cookie, set, request }) => {
@@ -54,6 +58,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     const user = await verifyOtp(parsed.data.email, parsed.data.code);
     if (!user) {
       set.status = 401;
+      trackEvent(parsed.data.email, "otp_verify_failed");
       return { error: "Invalid or expired code" };
     }
 
@@ -67,6 +72,10 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       path: "/",
     });
 
+    // Track successful login and identify user
+    trackEvent(user.id, "login", { method: "otp" });
+    identifyUser(user.id, { email: user.email });
+
     return { ok: true, redirect: "/dashboard" };
   })
   .post("/logout", async ({ cookie }) => {
@@ -75,5 +84,9 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       await deleteSession(token);
     }
     cookie[SESSION_COOKIE_NAME].remove();
+    
+    // Track logout
+    trackEvent("anonymous", "logout");
+    
     return { ok: true, redirect: "/" };
   });

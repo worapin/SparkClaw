@@ -16,6 +16,14 @@ const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   SENTRY_DSN: z.string().optional(),
   POSTHOG_API_KEY: z.string().optional(),
+  POSTHOG_HOST: z.string().url().default("https://us.i.posthog.com"),
+  // Langfuse - LLM Observability
+  LANGFUSE_PUBLIC_KEY: z.string().optional(),
+  LANGFUSE_SECRET_KEY: z.string().optional(),
+  LANGFUSE_HOST: z.string().url().default("https://cloud.langfuse.com"),
+  // BetterStack - Log Management
+  BETTERSTACK_SOURCE_TOKEN: z.string().optional(),
+  BETTERSTACK_HOST: z.string().url().default("https://s1.logs.betterstack.com"),
   // Custom domain configuration
   CUSTOM_DOMAIN_ROOT: z.string().min(1).default("sparkclaw.io"),
   REDIS_URL: z.string().optional(),
