@@ -34,7 +34,8 @@
     loading = true;
     error = "";
     try {
-      await verifyOtp(email, code);
+      const cleanCode = code.replace(/\D/g, ""); // Remove non-digits
+      await verifyOtp(email, cleanCode);
       const validPlan = getValidPlan();
       if (validPlan) {
         goto(`/dashboard?plan=${validPlan}`);
@@ -92,13 +93,13 @@
             id="code"
             type="text"
             inputmode="numeric"
-            pattern="[0-9]{6}"
             maxlength={6}
             bind:value={code}
             placeholder="000000"
             required
             disabled={loading}
             class="w-full px-4 py-3 rounded-xl border border-warm-200 bg-warm-50 text-warm-900 placeholder-warm-400 focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500 transition-all text-center text-2xl tracking-[0.5em] font-mono disabled:opacity-50"
+            oninput={(e) => { code = e.target.value.replace(/\D/g, ""); }}
           />
           <button type="submit" disabled={loading || code.length !== 6} class="btn-lift w-full mt-4 bg-terra-500 text-white py-3 rounded-xl font-semibold hover:bg-terra-600 transition-colors disabled:opacity-50">
             {loading ? "Verifying..." : "Verify"}
