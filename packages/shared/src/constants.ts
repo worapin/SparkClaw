@@ -14,10 +14,10 @@ export const PLANS: Record<Plan, { name: string; price: number }> = {
 };
 
 export const OTP_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
-export const OTP_SEND_RATE_LIMIT = 3; // max 3 per email per window
-export const OTP_SEND_RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-export const OTP_VERIFY_RATE_LIMIT = 5; // max 5 per email per window
-export const OTP_VERIFY_RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+export const OTP_SEND_RATE_LIMIT = 100; // max 100 per email per window (high for dev)
+export const OTP_SEND_RATE_WINDOW_MS = 60 * 1000; // 1 minute
+export const OTP_VERIFY_RATE_LIMIT = 100; // max 100 per email per window (high for dev)
+export const OTP_VERIFY_RATE_WINDOW_MS = 60 * 1000; // 1 minute
 
 export const SESSION_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 export const SESSION_COOKIE_NAME = "sparkclaw_session";
