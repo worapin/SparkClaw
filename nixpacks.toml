@@ -1,0 +1,5 @@
+[start]
+cmd = "bun run start:api"
+
+[build]
+cmds = ["bun install", "bun run build"]

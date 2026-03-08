@@ -1,5 +1,5 @@
 [start]
-cmd = "bun run start:web"
+cmd = "cd ../.. && bun run start:web"
 
 [build]
-cmds = ["bun install", "bun run build"]
+cmds = ["cd ../.. && bun install", "cd ../.. && bun run build"]
