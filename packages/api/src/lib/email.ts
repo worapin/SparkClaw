@@ -11,6 +11,15 @@ function getResend(): Resend {
 }
 
 export async function sendOtpEmail(email: string, code: string): Promise<void> {
+  // In development, log the code instead of sending email
+  if (!process.env.RESEND_API_KEY) {
+    logger.info("OTP code (development mode)", { email, code });
+    console.log(`\n========================================`);
+    console.log(`OTP CODE FOR ${email}: ${code}`);
+    console.log(`========================================\n`);
+    return;
+  }
+
   await getResend().emails.send({
     from: "SparkClaw <noreply@sparkclaw.com>",
     to: email,
