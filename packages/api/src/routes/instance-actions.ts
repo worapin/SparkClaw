@@ -50,7 +50,7 @@ export const instanceActionsRoutes = new Elysia({ prefix: "/api/instances" })
       const newStatus = action === "stop" ? "suspended" : "ready";
       await db.update(instances).set({ status: newStatus, updatedAt: new Date() }).where(eq(instances.id, params.id));
 
-      logAudit({ userId: user.id, action: `instance_${action}` as any, instanceId: params.id });
+      logAudit({ userId: user.id, action: `instance_${action}` as "instance_start" | "instance_stop" | "instance_restart", instanceId: params.id });
       return { success: true, action, status: newStatus };
     } catch (e) {
       logger.error(`Instance ${action} failed`, { instanceId: params.id, error: (e as Error).message });

@@ -2,6 +2,8 @@
   import '../app.css';
   import Navbar from '$lib/components/Navbar.svelte';
   import Footer from '$lib/components/Footer.svelte';
+  import Toast from '$lib/components/Toast.svelte';
+  import { toasts } from '$lib/stores/toast';
 
   let { children } = $props();
 </script>
@@ -18,4 +20,15 @@
     {@render children()}
   </main>
   <Footer />
+</div>
+
+<!-- Toast notifications -->
+<div class="fixed bottom-6 right-6 z-50 flex flex-col-reverse gap-3">
+  {#each $toasts as toast (toast.id)}
+    <div class="flex items-center gap-3 px-5 py-4 rounded-xl border shadow-lg animate-fade-up {toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : toast.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : toast.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-blue-50 border-blue-200 text-blue-800'}">
+      <span class="font-semibold">{toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : toast.type === 'warning' ? '⚠' : 'ℹ'}</span>
+      <span>{toast.message}</span>
+      <button onclick={() => toasts.remove(toast.id)} class="ml-2 hover:opacity-70 transition-opacity">✕</button>
+    </div>
+  {/each}
 </div>

@@ -1,5 +1,5 @@
 import { Elysia } from "elysia";
-import { constructStripeEvent, handleCheckoutCompleted, handleSubscriptionUpdated, handleSubscriptionDeleted } from "../services/stripe.js";
+import { constructStripeEvent, handleCheckoutCompleted, handleSubscriptionUpdated, handleSubscriptionDeleted, handleInvoicePaymentFailed } from "../services/stripe.js";
 import { logger } from "../lib/logger.js";
 
 export const webhookRoutes = new Elysia({ prefix: "/api/webhook" })
@@ -30,6 +30,9 @@ export const webhookRoutes = new Elysia({ prefix: "/api/webhook" })
           break;
         case "customer.subscription.deleted":
           await handleSubscriptionDeleted(event.data.object);
+          break;
+        case "invoice.payment_failed":
+          await handleInvoicePaymentFailed(event.data.object);
           break;
         default:
           logger.info("Unhandled webhook event", { type: event.type });

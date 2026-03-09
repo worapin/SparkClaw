@@ -5,6 +5,8 @@ import type { Plan } from "@sparkclaw/shared/types";
 import { eq } from "drizzle-orm";
 import { queueInstanceProvisioning } from "./queue.js";
 import { logger } from "../lib/logger.js";
+import { sendPaymentFailedEmail, sendSubscriptionCanceledEmail } from "./email.js";
+import { users } from "@sparkclaw/shared/db";
 
 let _stripe: Stripe | null = null;
 
@@ -84,6 +86,23 @@ export async function handleSubscriptionUpdated(
     .where(eq(subscriptions.stripeSubscriptionId, subscription.id));
 }
 
+export async function createBillingPortalSession(
+  customerId: string,
+): Promise<string> {
+  const session = await getStripe().billingPortal.sessions.create({
+    customer: customerId,
+    return_url: `${process.env.WEB_URL}/account`,
+  });
+
+  return session.url;
+}
+
+export async function cancelSubscription(
+  subscriptionId: string,
+): Promise<void> {
+  await getStripe().subscriptions.cancel(subscriptionId);
+}
+
 export async function handleSubscriptionDeleted(
   subscription: Stripe.Subscription,
 ): Promise<void> {
@@ -102,5 +121,34 @@ export async function handleSubscriptionDeleted(
       .update(instances)
       .set({ status: "suspended", updatedAt: new Date() })
       .where(eq(instances.subscriptionId, sub.id));
+
+    // Send cancellation email
+    const user = await db.query.users.findFirst({ where: eq(users.id, sub.userId) });
+    if (user?.email) {
+      sendSubscriptionCanceledEmail(user.email, sub.plan).catch(() => {});
+    }
   }
+}
+
+export async function handleInvoicePaymentFailed(
+  invoice: Stripe.Invoice,
+): Promise<void> {
+  const customerId = invoice.customer as string;
+  const sub = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.stripeCustomerId, customerId),
+  });
+
+  if (sub) {
+    await db
+      .update(subscriptions)
+      .set({ status: "past_due", updatedAt: new Date() })
+      .where(eq(subscriptions.id, sub.id));
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, sub.userId) });
+    if (user?.email) {
+      sendPaymentFailedEmail(user.email).catch(() => {});
+    }
+  }
+
+  logger.warn("Invoice payment failed", { customerId, invoiceId: invoice.id });
 }

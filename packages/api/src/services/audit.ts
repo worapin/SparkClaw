@@ -20,7 +20,12 @@ export type AuditAction =
   | "org_member_role_changed"
   | "scheduled_job_created"
   | "scheduled_job_updated"
-  | "scheduled_job_deleted";
+  | "scheduled_job_deleted"
+  | "subscription_canceled"
+  | "account_deleted"
+  | "instance_start"
+  | "instance_stop"
+  | "instance_restart";
 
 export async function logAudit(params: {
   userId: string;

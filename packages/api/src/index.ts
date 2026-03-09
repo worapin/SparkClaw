@@ -18,11 +18,16 @@ import { scheduledJobsRoutes } from "./routes/scheduled-jobs.js";
 import { instanceActionsRoutes } from "./routes/instance-actions.js";
 import { envVarsRoutes } from "./routes/env-vars.js";
 import { customSkillsRoutes } from "./routes/custom-skills.js";
+import { billingRoutes } from "./routes/billing.js";
+import { initWorker, closeQueue } from "./services/queue.js";
 
 const env = validateEnv();
 
 // Initialize observability (Sentry)
 initSentry();
+
+// Initialize queue worker for instance provisioning
+initWorker();
 
 const app = new Elysia()
   .use(cors({
@@ -45,6 +50,7 @@ const app = new Elysia()
   .use(instanceActionsRoutes)
   .use(envVarsRoutes)
   .use(customSkillsRoutes)
+  .use(billingRoutes)
   .listen(env.PORT);
 
 logger.info("SparkClaw API started", { url: app.server?.url?.toString() });
@@ -52,12 +58,14 @@ logger.info("SparkClaw API started", { url: app.server?.url?.toString() });
 // Graceful shutdown
 process.on("SIGTERM", async () => {
   logger.info("Shutting down gracefully...");
+  await closeQueue();
   await flushTelemetry();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
   logger.info("Shutting down gracefully...");
+  await closeQueue();
   await flushTelemetry();
   process.exit(0);
 });

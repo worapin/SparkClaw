@@ -346,3 +346,17 @@ export async function executeCustomSkill(id: string) {
     method: "POST",
   });
 }
+
+// ── Billing ─────────────────────────────────────────────────────────────────
+
+export async function getBillingPortalUrl() {
+  return request<{ url: string }>("/api/billing/portal", { method: "POST" });
+}
+
+export async function cancelSubscription() {
+  return request<{ success: boolean }>("/api/billing/cancel", { method: "POST" });
+}
+
+export async function deleteAccount() {
+  return request<{ success: boolean }>("/api/billing/account", { method: "DELETE" });
+}

@@ -14,7 +14,11 @@
     getLlmKeys,
     createLlmKey,
     deleteLlmKey,
+    getBillingPortalUrl,
+    cancelSubscription,
+    deleteAccount,
   } from "$lib/api";
+  import { toasts } from "$lib/stores/toast";
   import type { MeResponse, ApiKeyResponse, LlmKeyResponse } from "@sparkclaw/shared/types";
 
   const ALL_SCOPES = ["instance:read", "instance:write", "setup:read", "setup:write"] as const;
@@ -208,6 +212,48 @@
       llmKeys = llmKeys.filter((k) => k.id !== id);
     } catch (e: any) {
       llmKeyError = e.message || "Failed to delete key";
+    }
+  }
+
+  // ── Billing / Danger Zone ────────────────────────────────────────────────────
+
+  let showCancelConfirm = $state(false);
+  let showDeleteConfirm = $state(false);
+  let dangerLoading = $state(false);
+
+  async function handleBillingPortal() {
+    try {
+      const { url } = await getBillingPortalUrl();
+      window.location.href = url;
+    } catch (e: any) {
+      toasts.error(e.message || "Failed to open billing portal");
+    }
+  }
+
+  async function handleCancelSubscription() {
+    dangerLoading = true;
+    try {
+      await cancelSubscription();
+      toasts.success("Subscription canceled successfully");
+      showCancelConfirm = false;
+      // Refresh user data
+      const meResult = await getMe();
+      user = meResult;
+    } catch (e: any) {
+      toasts.error(e.message || "Failed to cancel subscription");
+    } finally {
+      dangerLoading = false;
+    }
+  }
+
+  async function handleDeleteAccount() {
+    dangerLoading = true;
+    try {
+      await deleteAccount();
+      goto("/");
+    } catch (e: any) {
+      toasts.error(e.message || "Failed to delete account");
+      dangerLoading = false;
     }
   }
 
@@ -621,7 +667,7 @@
           </div>
           <div class="flex gap-3">
             <a href="/pricing" class="flex-1 text-sm font-medium text-warm-700 text-center border border-warm-200 rounded-lg py-2.5 hover:bg-warm-50 transition-colors">Change plan</a>
-            <button class="flex-1 text-sm font-medium text-warm-700 border border-warm-200 rounded-lg py-2.5 hover:bg-warm-50 transition-colors">Billing portal</button>
+            <button onclick={handleBillingPortal} class="flex-1 text-sm font-medium text-warm-700 border border-warm-200 rounded-lg py-2.5 hover:bg-warm-50 transition-colors">Billing portal</button>
           </div>
         {:else}
           <p class="text-warm-500 mb-4">No active subscription.</p>
@@ -632,10 +678,72 @@
       <!-- ── Danger Zone ──────────────────────────────────────────────────── -->
       <div class="bg-white rounded-2xl border border-red-200 p-6">
         <h2 class="font-display text-lg mb-2 text-red-700">Danger Zone</h2>
-        <p class="text-warm-500 text-sm mb-4">Canceling your subscription will suspend your instance. Your data is kept for 30 days.</p>
-        <button class="text-sm font-medium text-red-600 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors">
-          Cancel subscription
-        </button>
+
+        <!-- Cancel Subscription -->
+        {#if user.subscription && user.subscription.status !== "canceled"}
+          <div class="mb-6">
+            <p class="text-warm-500 text-sm mb-3">Canceling your subscription will suspend all your instances. Your data is kept for 30 days.</p>
+            {#if showCancelConfirm}
+              <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+                <p class="text-sm text-red-700 mb-3">Are you sure you want to cancel your subscription? This will suspend all instances immediately.</p>
+                <div class="flex gap-3">
+                  <button
+                    onclick={handleCancelSubscription}
+                    disabled={dangerLoading}
+                    class="text-sm font-medium text-white bg-red-600 rounded-lg px-4 py-2 hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {dangerLoading ? "Canceling..." : "Yes, cancel subscription"}
+                  </button>
+                  <button
+                    onclick={() => (showCancelConfirm = false)}
+                    class="text-sm text-warm-500 hover:text-warm-700 px-3"
+                  >
+                    Keep subscription
+                  </button>
+                </div>
+              </div>
+            {:else}
+              <button
+                onclick={() => (showCancelConfirm = true)}
+                class="text-sm font-medium text-red-600 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors"
+              >
+                Cancel subscription
+              </button>
+            {/if}
+          </div>
+        {/if}
+
+        <!-- Delete Account -->
+        <div class="border-t border-red-100 pt-4">
+          <p class="text-warm-500 text-sm mb-3">Permanently delete your account and all associated data. This cannot be undone.</p>
+          {#if showDeleteConfirm}
+            <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+              <p class="text-sm text-red-700 mb-3">This will permanently delete your account, all instances, and all data. This action cannot be undone.</p>
+              <div class="flex gap-3">
+                <button
+                  onclick={handleDeleteAccount}
+                  disabled={dangerLoading}
+                  class="text-sm font-medium text-white bg-red-600 rounded-lg px-4 py-2 hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {dangerLoading ? "Deleting..." : "Yes, delete my account"}
+                </button>
+                <button
+                  onclick={() => (showDeleteConfirm = false)}
+                  class="text-sm text-warm-500 hover:text-warm-700 px-3"
+                >
+                  Keep account
+                </button>
+              </div>
+            </div>
+          {:else}
+            <button
+              onclick={() => (showDeleteConfirm = true)}
+              class="text-sm font-medium text-red-600 border border-red-200 rounded-lg px-4 py-2 hover:bg-red-50 transition-colors"
+            >
+              Delete account
+            </button>
+          {/if}
+        </div>
       </div>
     {/if}
   </div>
