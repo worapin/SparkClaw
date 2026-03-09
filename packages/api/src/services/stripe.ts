@@ -4,6 +4,7 @@ import { getStripePriceId } from "@sparkclaw/shared/constants";
 import type { Plan } from "@sparkclaw/shared/types";
 import { eq } from "drizzle-orm";
 import { queueInstanceProvisioning } from "./queue.js";
+import { provisionInstance } from "./railway.js";
 import { logger } from "../lib/logger.js";
 import { sendPaymentFailedEmail, sendSubscriptionCanceledEmail } from "./email.js";
 import { users } from "@sparkclaw/shared/db";
@@ -67,10 +68,17 @@ export async function handleCheckoutCompleted(
     })
     .returning();
 
-  // Queue instance provisioning for async processing
-  queueInstanceProvisioning(userId, sub.id).catch((err: Error) => {
-    logger.error("Failed to queue provisioning", { userId, subscriptionId: sub.id, error: err.message });
-  });
+  // Queue instance provisioning for async processing (or direct if no Redis)
+  if (process.env.REDIS_URL) {
+    queueInstanceProvisioning(userId, sub.id).catch((err: Error) => {
+      logger.error("Failed to queue provisioning", { userId, subscriptionId: sub.id, error: err.message });
+    });
+  } else {
+    // Direct provisioning when Redis is not available
+    provisionInstance(userId, sub.id).catch((err: Error) => {
+      logger.error("Failed to provision instance", { userId, subscriptionId: sub.id, error: err.message });
+    });
+  }
 }
 
 export async function handleSubscriptionUpdated(

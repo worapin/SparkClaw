@@ -26,8 +26,12 @@ const env = validateEnv();
 // Initialize observability (Sentry)
 initSentry();
 
-// Initialize queue worker for instance provisioning
-initWorker();
+// Initialize queue worker for instance provisioning (only if Redis is available)
+if (env.REDIS_URL) {
+  initWorker();
+} else {
+  logger.warn("REDIS_URL not set - queue worker not initialized. Using direct provisioning instead.");
+}
 
 const app = new Elysia()
   .use(cors({
