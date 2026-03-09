@@ -9,7 +9,9 @@
   const isAppPage = $derived(
     page.url.pathname.startsWith('/dashboard') ||
     page.url.pathname.startsWith('/setup') ||
-    page.url.pathname.startsWith('/account')
+    page.url.pathname.startsWith('/account') ||
+    page.url.pathname.startsWith('/orgs') ||
+    page.url.pathname.startsWith('/usage')
   );
 
   let instances = $state<import("@sparkclaw/shared/types").InstanceResponse[]>([]);
@@ -103,6 +105,8 @@
     <div class="hidden md:flex items-center gap-3">
       {#if isAppPage}
         <a href="/dashboard" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5" class:text-warm-900={isActive('/dashboard')}>Dashboard</a>
+        <a href="/orgs" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5" class:text-warm-900={isActive('/orgs')}>Teams</a>
+        <a href="/usage" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5" class:text-warm-900={isActive('/usage')}>Usage</a>
         <a href="/account" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5" class:text-warm-900={isActive('/account')}>Account</a>
       {:else}
         <a href="/auth" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5">Log in</a>
@@ -144,6 +148,8 @@
       <hr class="border-warm-200" />
       {#if isAppPage}
         <a href="/dashboard" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Dashboard</a>
+        <a href="/orgs" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Teams</a>
+        <a href="/usage" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Usage</a>
         <a href="/account" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Account</a>
       {:else}
         <a href="/auth" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Log in</a>

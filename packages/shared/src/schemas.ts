@@ -84,10 +84,80 @@ export const saveChannelCredentialsSchema = z.object({
   credentials: z.record(z.string()),
 });
 
-// Infer request types from schemas
+// ─── API Key schemas ─────────────────────────────────────────────────────────
+
+export const apiKeyScopeSchema = z.enum(["instance:read", "instance:write", "setup:read", "setup:write"]);
+
+export const createApiKeySchema = z.object({
+  name: z.string().min(1).max(100),
+  scopes: z.array(apiKeyScopeSchema).min(1),
+  expiresInDays: z.number().min(1).max(365).optional(),
+});
+
+// ─── TOTP schemas ────────────────────────────────────────────────────────────
+
+export const verifyTotpSchema = z.object({
+  code: z.string().regex(/^\d{6}$/, "TOTP must be 6 digits"),
+});
+
+// ─── BYOK (LLM Key) schemas ─────────────────────────────────────────────────
+
+export const llmProviderSchema = z.enum(["openai", "anthropic", "google", "ollama"]);
+
+export const createLlmKeySchema = z.object({
+  provider: llmProviderSchema,
+  name: z.string().min(1).max(100),
+  apiKey: z.string().min(1).max(500),
+});
+
+// ─── Organization schemas ────────────────────────────────────────────────────
+
+export const orgRoleSchema = z.enum(["owner", "admin", "member"]);
+
+export const createOrgSchema = z.object({
+  name: z.string().min(1).max(100),
+});
+
+export const inviteOrgMemberSchema = z.object({
+  email: z.string().email().max(255),
+  role: orgRoleSchema.default("member"),
+});
+
+export const updateOrgMemberRoleSchema = z.object({
+  role: orgRoleSchema,
+});
+
+// ─── Scheduled Job schemas ───────────────────────────────────────────────────
+
+export const scheduledTaskTypeSchema = z.enum(["backup", "report", "data_sync", "webhook"]);
+
+export const createScheduledJobSchema = z.object({
+  instanceId: z.string().uuid(),
+  name: z.string().min(1).max(100),
+  cronExpression: z.string().min(1).max(50),
+  taskType: scheduledTaskTypeSchema,
+  config: z.record(z.unknown()).optional(),
+});
+
+export const updateScheduledJobSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  cronExpression: z.string().min(1).max(50).optional(),
+  config: z.record(z.unknown()).optional(),
+  enabled: z.boolean().optional(),
+});
+
+// ─── Infer request types from schemas ────────────────────────────────────────
+
 export type SendOtpInput = z.infer<typeof sendOtpSchema>;
 export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 export type SaveSetupInput = z.infer<typeof saveSetupSchema>;
 export type SaveChannelCredentialsInput = z.infer<typeof saveChannelCredentialsSchema>;
 export type CreateInstanceInput = z.infer<typeof createInstanceSchema>;
+export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
+export type VerifyTotpInput = z.infer<typeof verifyTotpSchema>;
+export type CreateLlmKeyInput = z.infer<typeof createLlmKeySchema>;
+export type CreateOrgInput = z.infer<typeof createOrgSchema>;
+export type InviteOrgMemberInput = z.infer<typeof inviteOrgMemberSchema>;
+export type CreateScheduledJobInput = z.infer<typeof createScheduledJobSchema>;
+export type UpdateScheduledJobInput = z.infer<typeof updateScheduledJobSchema>;

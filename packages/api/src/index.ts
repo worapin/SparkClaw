@@ -8,6 +8,13 @@ import { apiRoutes } from "./routes/api.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { setupRoutes } from "./routes/setup.js";
 import { adminRoutes } from "./routes/admin.js";
+import { adminAuditRoutes } from "./routes/admin-audit.js";
+import { apiKeysRoutes } from "./routes/api-keys.js";
+import { totpRoutes } from "./routes/totp.js";
+import { llmKeysRoutes } from "./routes/llm-keys.js";
+import { orgRoutes } from "./routes/orgs.js";
+import { usageRoutes } from "./routes/usage.js";
+import { scheduledJobsRoutes } from "./routes/scheduled-jobs.js";
 
 const env = validateEnv();
 
@@ -25,6 +32,13 @@ const app = new Elysia()
   .use(webhookRoutes)
   .use(setupRoutes)
   .use(adminRoutes)
+  .use(adminAuditRoutes)
+  .use(apiKeysRoutes)
+  .use(totpRoutes)
+  .use(llmKeysRoutes)
+  .use(orgRoutes)
+  .use(usageRoutes)
+  .use(scheduledJobsRoutes)
   .listen(env.PORT);
 
 logger.info("SparkClaw API started", { url: app.server?.url?.toString() });

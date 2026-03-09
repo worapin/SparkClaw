@@ -9,6 +9,8 @@ import { db, subscriptions, instances } from "@sparkclaw/shared/db";
 import { eq, and } from "drizzle-orm";
 import { queueInstanceProvisioning } from "../services/queue.js";
 import { logger } from "../lib/logger.js";
+import { totpSecrets } from "@sparkclaw/shared/db";
+import { logAudit } from "../services/audit.js";
 
 function toInstanceResponse(result: {
   id: string;
@@ -62,9 +64,10 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
       where: eq(subscriptions.userId, user.id),
     });
 
-    const userInstances = await db.query.instances.findMany({
-      where: eq(instances.userId, user.id),
-    });
+    const [userInstances, totp] = await Promise.all([
+      db.query.instances.findMany({ where: eq(instances.userId, user.id) }),
+      db.query.totpSecrets.findFirst({ where: eq(totpSecrets.userId, user.id) }),
+    ]);
 
     const plan = (sub?.plan as Plan) ?? "starter";
 
@@ -81,6 +84,7 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
         : null,
       instanceLimit: PLAN_INSTANCE_LIMITS[plan] ?? 1,
       instanceCount: userInstances.length,
+      totpEnabled: totp?.enabled ?? false,
       createdAt: user.createdAt.toISOString(),
     };
 
@@ -150,6 +154,7 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
       currentCount: existing.length,
       limit,
     });
+    logAudit({ userId: user.id, action: "instance_created", metadata: { plan, count: existing.length + 1 } });
 
     return { success: true, message: "Instance provisioning started" };
   })
@@ -171,6 +176,7 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
       userId: user.id,
       instanceId: params.id,
     });
+    logAudit({ userId: user.id, action: "instance_deleted", instanceId: params.id });
 
     return { success: true };
   })

@@ -9,6 +9,8 @@ import {
   jsonb,
   boolean,
   real,
+  integer,
+  bigint,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -27,6 +29,11 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   sessions: many(sessions),
   subscription: one(subscriptions),
   instances: many(instances),
+  apiKeys: many(apiKeys),
+  auditLogs: many(auditLogs),
+  totpSecret: one(totpSecrets),
+  llmKeys: many(llmKeys),
+  orgMemberships: many(orgMembers),
 }));
 
 // ─── otp_codes ───────────────────────────────────────────────────────────────
@@ -172,6 +179,9 @@ export const instancesRelations = relations(instances, ({ one, many }) => ({
     references: [subscriptions.id],
   }),
   channelConfigs: many(channelConfigs),
+  auditLogs: many(auditLogs),
+  usageRecords: many(usageRecords),
+  scheduledJobs: many(scheduledJobs),
 }));
 
 // ─── channel_configs ──────────────────────────────────────────────────────────
@@ -203,4 +213,254 @@ export const channelConfigsRelations = relations(channelConfigs, ({ one }) => ({
     fields: [channelConfigs.instanceId],
     references: [instances.id],
   }),
+}));
+
+// ─── api_keys ────────────────────────────────────────────────────────────────
+
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    keyHash: varchar("key_hash", { length: 64 }).notNull().unique(),
+    keyPrefix: varchar("key_prefix", { length: 12 }).notNull(),
+    scopes: jsonb("scopes").$type<string[]>().notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("api_keys_user_id_idx").on(table.userId),
+    uniqueIndex("api_keys_key_hash_idx").on(table.keyHash),
+  ],
+);
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, { fields: [apiKeys.userId], references: [users.id] }),
+}));
+
+// ─── audit_logs ──────────────────────────────────────────────────────────────
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    instanceId: uuid("instance_id")
+      .references(() => instances.id, { onDelete: "set null" }),
+    action: varchar("action", { length: 50 }).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    ip: varchar("ip", { length: 45 }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("audit_logs_user_id_idx").on(table.userId),
+    index("audit_logs_instance_id_idx").on(table.instanceId),
+    index("audit_logs_action_idx").on(table.action),
+    index("audit_logs_created_at_idx").on(table.createdAt),
+  ],
+);
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, { fields: [auditLogs.userId], references: [users.id] }),
+  instance: one(instances, { fields: [auditLogs.instanceId], references: [instances.id] }),
+}));
+
+// ─── totp_secrets ────────────────────────────────────────────────────────────
+
+export const totpSecrets = pgTable(
+  "totp_secrets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    encryptedSecret: text("encrypted_secret").notNull(),
+    enabled: boolean("enabled").notNull().default(false),
+    backupCodes: jsonb("backup_codes").$type<string[]>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("totp_secrets_user_id_idx").on(table.userId),
+  ],
+);
+
+export const totpSecretsRelations = relations(totpSecrets, ({ one }) => ({
+  user: one(users, { fields: [totpSecrets.userId], references: [users.id] }),
+}));
+
+// ─── llm_keys (BYOK) ────────────────────────────────────────────────────────
+
+export const llmKeys = pgTable(
+  "llm_keys",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: varchar("provider", { length: 30 }).notNull(),
+    name: varchar("name", { length: 100 }).notNull(),
+    encryptedKey: text("encrypted_key").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("llm_keys_user_id_idx").on(table.userId),
+    uniqueIndex("llm_keys_user_provider_name_idx").on(table.userId, table.provider, table.name),
+  ],
+);
+
+export const llmKeysRelations = relations(llmKeys, ({ one }) => ({
+  user: one(users, { fields: [llmKeys.userId], references: [users.id] }),
+}));
+
+// ─── organizations ───────────────────────────────────────────────────────────
+
+export const organizations = pgTable(
+  "organizations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: varchar("name", { length: 100 }).notNull(),
+    slug: varchar("slug", { length: 100 }).notNull().unique(),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("organizations_slug_idx").on(table.slug),
+    index("organizations_owner_id_idx").on(table.ownerId),
+  ],
+);
+
+export const organizationsRelations = relations(organizations, ({ one, many }) => ({
+  owner: one(users, { fields: [organizations.ownerId], references: [users.id] }),
+  members: many(orgMembers),
+  invites: many(orgInvites),
+}));
+
+// ─── org_members ─────────────────────────────────────────────────────────────
+
+export const orgMembers = pgTable(
+  "org_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: varchar("role", { length: 20 }).notNull().default("member"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("org_members_org_user_idx").on(table.orgId, table.userId),
+    index("org_members_user_id_idx").on(table.userId),
+  ],
+);
+
+export const orgMembersRelations = relations(orgMembers, ({ one }) => ({
+  org: one(organizations, { fields: [orgMembers.orgId], references: [organizations.id] }),
+  user: one(users, { fields: [orgMembers.userId], references: [users.id] }),
+}));
+
+// ─── org_invites ─────────────────────────────────────────────────────────────
+
+export const orgInvites = pgTable(
+  "org_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    email: varchar("email", { length: 255 }).notNull(),
+    role: varchar("role", { length: 20 }).notNull().default("member"),
+    token: varchar("token", { length: 64 }).notNull().unique(),
+    invitedBy: uuid("invited_by")
+      .notNull()
+      .references(() => users.id),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("org_invites_org_id_idx").on(table.orgId),
+    uniqueIndex("org_invites_token_idx").on(table.token),
+    index("org_invites_email_idx").on(table.email),
+  ],
+);
+
+export const orgInvitesRelations = relations(orgInvites, ({ one }) => ({
+  org: one(organizations, { fields: [orgInvites.orgId], references: [organizations.id] }),
+  inviter: one(users, { fields: [orgInvites.invitedBy], references: [users.id] }),
+}));
+
+// ─── usage_records ───────────────────────────────────────────────────────────
+
+export const usageRecords = pgTable(
+  "usage_records",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id),
+    instanceId: uuid("instance_id")
+      .references(() => instances.id, { onDelete: "set null" }),
+    type: varchar("type", { length: 30 }).notNull(),
+    quantity: integer("quantity").notNull().default(0),
+    period: varchar("period", { length: 7 }).notNull(), // YYYY-MM
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("usage_records_user_id_idx").on(table.userId),
+    index("usage_records_instance_id_idx").on(table.instanceId),
+    index("usage_records_period_idx").on(table.period),
+    uniqueIndex("usage_records_user_instance_type_period_idx").on(
+      table.userId, table.instanceId, table.type, table.period,
+    ),
+  ],
+);
+
+export const usageRecordsRelations = relations(usageRecords, ({ one }) => ({
+  user: one(users, { fields: [usageRecords.userId], references: [users.id] }),
+  instance: one(instances, { fields: [usageRecords.instanceId], references: [instances.id] }),
+}));
+
+// ─── scheduled_jobs ──────────────────────────────────────────────────────────
+
+export const scheduledJobs = pgTable(
+  "scheduled_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instanceId: uuid("instance_id")
+      .notNull()
+      .references(() => instances.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    cronExpression: varchar("cron_expression", { length: 50 }).notNull(),
+    taskType: varchar("task_type", { length: 30 }).notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>(),
+    enabled: boolean("enabled").notNull().default(true),
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("scheduled_jobs_instance_id_idx").on(table.instanceId),
+    index("scheduled_jobs_enabled_idx").on(table.enabled),
+  ],
+);
+
+export const scheduledJobsRelations = relations(scheduledJobs, ({ one }) => ({
+  instance: one(instances, { fields: [scheduledJobs.instanceId], references: [instances.id] }),
 }));

@@ -6,6 +6,15 @@ import type {
   subscriptions,
   instances,
   channelConfigs,
+  apiKeys,
+  auditLogs,
+  totpSecrets,
+  llmKeys,
+  organizations,
+  orgMembers,
+  orgInvites,
+  usageRecords,
+  scheduledJobs,
 } from "./db/schema.js";
 
 // ─── Select types (read from DB) ────────────────────────────────────────────
@@ -16,6 +25,15 @@ export type Session = InferSelectModel<typeof sessions>;
 export type Subscription = InferSelectModel<typeof subscriptions>;
 export type Instance = InferSelectModel<typeof instances>;
 export type ChannelConfigRecord = InferSelectModel<typeof channelConfigs>;
+export type ApiKey = InferSelectModel<typeof apiKeys>;
+export type AuditLog = InferSelectModel<typeof auditLogs>;
+export type TotpSecret = InferSelectModel<typeof totpSecrets>;
+export type LlmKey = InferSelectModel<typeof llmKeys>;
+export type Organization = InferSelectModel<typeof organizations>;
+export type OrgMember = InferSelectModel<typeof orgMembers>;
+export type OrgInvite = InferSelectModel<typeof orgInvites>;
+export type UsageRecord = InferSelectModel<typeof usageRecords>;
+export type ScheduledJob = InferSelectModel<typeof scheduledJobs>;
 
 // ─── Insert types (write to DB) ─────────────────────────────────────────────
 
@@ -25,6 +43,15 @@ export type NewSession = InferInsertModel<typeof sessions>;
 export type NewSubscription = InferInsertModel<typeof subscriptions>;
 export type NewInstance = InferInsertModel<typeof instances>;
 export type NewChannelConfigRecord = InferInsertModel<typeof channelConfigs>;
+export type NewApiKey = InferInsertModel<typeof apiKeys>;
+export type NewAuditLog = InferInsertModel<typeof auditLogs>;
+export type NewTotpSecret = InferInsertModel<typeof totpSecrets>;
+export type NewLlmKey = InferInsertModel<typeof llmKeys>;
+export type NewOrganization = InferInsertModel<typeof organizations>;
+export type NewOrgMember = InferInsertModel<typeof orgMembers>;
+export type NewOrgInvite = InferInsertModel<typeof orgInvites>;
+export type NewUsageRecord = InferInsertModel<typeof usageRecords>;
+export type NewScheduledJob = InferInsertModel<typeof scheduledJobs>;
 
 // ─── Domain types ────────────────────────────────────────────────────────────
 
@@ -33,6 +60,11 @@ export type Plan = "starter" | "pro" | "scale";
 export type SubscriptionStatus = "active" | "canceled" | "past_due";
 export type InstanceStatus = "pending" | "ready" | "error" | "suspended";
 export type DomainStatus = "pending" | "provisioning" | "ready" | "error";
+export type OrgRole = "owner" | "admin" | "member";
+export type LlmProvider = "openai" | "anthropic" | "google" | "ollama";
+export type ApiKeyScope = "instance:read" | "instance:write" | "setup:read" | "setup:write";
+export type UsageType = "llm_tokens" | "messages" | "file_storage" | "api_calls";
+export type ScheduledTaskType = "backup" | "report" | "data_sync" | "webhook";
 
 // ─── API response types ─────────────────────────────────────────────────────
 
@@ -47,6 +79,76 @@ export interface MeResponse {
   } | null;
   instanceLimit: number;
   instanceCount: number;
+  totpEnabled: boolean;
+  createdAt: string;
+}
+
+export interface ApiKeyResponse {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  scopes: ApiKeyScope[];
+  lastUsedAt: string | null;
+  expiresAt: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogResponse {
+  id: string;
+  action: string;
+  metadata: Record<string, unknown> | null;
+  ip: string | null;
+  instanceId: string | null;
+  user: { id: string; email: string };
+  createdAt: string;
+}
+
+export interface OrgResponse {
+  id: string;
+  name: string;
+  slug: string;
+  role: OrgRole;
+  memberCount: number;
+  createdAt: string;
+}
+
+export interface OrgMemberResponse {
+  id: string;
+  userId: string;
+  email: string;
+  role: OrgRole;
+  createdAt: string;
+}
+
+export interface LlmKeyResponse {
+  id: string;
+  provider: LlmProvider;
+  name: string;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface UsageSummary {
+  period: string;
+  items: Array<{
+    type: UsageType;
+    quantity: number;
+    instanceId: string | null;
+    instanceName: string | null;
+  }>;
+  totals: Record<UsageType, number>;
+}
+
+export interface ScheduledJobResponse {
+  id: string;
+  instanceId: string;
+  name: string;
+  cronExpression: string;
+  taskType: ScheduledTaskType;
+  config: Record<string, unknown> | null;
+  enabled: boolean;
+  lastRunAt: string | null;
+  nextRunAt: string | null;
   createdAt: string;
 }
 

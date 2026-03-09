@@ -7,6 +7,7 @@ import { sendOtpEmail } from "../lib/email.js";
 import { csrfMiddleware } from "../middleware/csrf.js";
 import { RateLimiter } from "../lib/rate-limiter.js";
 import { trackEvent, identifyUser } from "../lib/observability.js";
+import { logAudit } from "../services/audit.js";
 
 const sendOtpLimiter = new RateLimiter(OTP_SEND_RATE_LIMIT, OTP_SEND_RATE_WINDOW_MS);
 const verifyOtpLimiter = new RateLimiter(OTP_VERIFY_RATE_LIMIT, OTP_VERIFY_RATE_WINDOW_MS);
@@ -75,6 +76,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     // Track successful login and identify user
     trackEvent(user.id, "login", { method: "otp" });
     identifyUser(user.id, { email: user.email });
+    logAudit({ userId: user.id, action: "login", ip: getClientIp(request) });
 
     return { ok: true, redirect: "/dashboard" };
   })
