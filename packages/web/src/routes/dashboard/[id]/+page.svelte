@@ -862,8 +862,9 @@
               <h3 class="text-sm font-semibold text-warm-700 mb-3">Add Variable</h3>
               <div class="flex flex-wrap gap-3 items-end">
                 <div class="flex-1 min-w-[160px]">
-                  <label class="text-xs text-warm-500 mb-1 block">Key</label>
+                  <label for="env-key" class="text-xs text-warm-500 mb-1 block">Key</label>
                   <input
+                    id="env-key"
                     type="text"
                     bind:value={envForm.key}
                     oninput={() => envForm.key = envForm.key.toUpperCase()}
@@ -872,8 +873,9 @@
                   />
                 </div>
                 <div class="flex-1 min-w-[200px]">
-                  <label class="text-xs text-warm-500 mb-1 block">Value</label>
+                  <label for="env-value" class="text-xs text-warm-500 mb-1 block">Value</label>
                   <input
+                    id="env-value"
                     type="text"
                     bind:value={envForm.value}
                     placeholder="value"
@@ -1064,8 +1066,9 @@
                 <h3 class="font-display text-xl mb-4">{editingJobId ? "Edit Job" : "New Job"}</h3>
                 <div class="space-y-4">
                   <div>
-                    <label class="text-xs text-warm-500 mb-1 block">Name</label>
+                    <label for="job-name" class="text-xs text-warm-500 mb-1 block">Name</label>
                     <input
+                      id="job-name"
                       type="text"
                       bind:value={jobForm.name}
                       placeholder="Daily backup"
@@ -1073,8 +1076,9 @@
                     />
                   </div>
                   <div>
-                    <label class="text-xs text-warm-500 mb-1 block">Cron Expression</label>
+                    <label for="job-cron" class="text-xs text-warm-500 mb-1 block">Cron Expression</label>
                     <input
+                      id="job-cron"
                       type="text"
                       bind:value={jobForm.cronExpression}
                       placeholder="0 2 * * *"
@@ -1082,8 +1086,9 @@
                     />
                   </div>
                   <div>
-                    <label class="text-xs text-warm-500 mb-1 block">Task Type</label>
+                    <label for="job-task-type" class="text-xs text-warm-500 mb-1 block">Task Type</label>
                     <select
+                      id="job-task-type"
                       bind:value={jobForm.taskType}
                       class="w-full px-3 py-2 border border-warm-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500"
                     >
@@ -1094,8 +1099,9 @@
                     </select>
                   </div>
                   <div>
-                    <label class="text-xs text-warm-500 mb-1 block">Config (JSON)</label>
+                    <label for="job-config" class="text-xs text-warm-500 mb-1 block">Config (JSON)</label>
                     <textarea
+                      id="job-config"
                       bind:value={jobForm.config}
                       rows="4"
                       class="w-full px-3 py-2 border border-warm-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500 resize-y"
@@ -1231,8 +1237,9 @@
                 <div class="space-y-4">
                   <div class="grid grid-cols-2 gap-4">
                     <div>
-                      <label class="text-xs text-warm-500 mb-1 block">Name</label>
+                      <label for="skill-name" class="text-xs text-warm-500 mb-1 block">Name</label>
                       <input
+                        id="skill-name"
                         type="text"
                         bind:value={skillForm.name}
                         placeholder="My Skill"
@@ -1240,8 +1247,9 @@
                       />
                     </div>
                     <div>
-                      <label class="text-xs text-warm-500 mb-1 block">Language</label>
+                      <label for="skill-language" class="text-xs text-warm-500 mb-1 block">Language</label>
                       <select
+                        id="skill-language"
                         bind:value={skillForm.language}
                         class="w-full px-3 py-2 border border-warm-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500"
                       >
@@ -1251,8 +1259,9 @@
                     </div>
                   </div>
                   <div>
-                    <label class="text-xs text-warm-500 mb-1 block">Description</label>
+                    <label for="skill-description" class="text-xs text-warm-500 mb-1 block">Description</label>
                     <input
+                      id="skill-description"
                       type="text"
                       bind:value={skillForm.description}
                       placeholder="What does this skill do?"
@@ -1260,8 +1269,9 @@
                     />
                   </div>
                   <div>
-                    <label class="text-xs text-warm-500 mb-1 block">Code</label>
+                    <label for="skill-code" class="text-xs text-warm-500 mb-1 block">Code</label>
                     <textarea
+                      id="skill-code"
                       bind:value={skillForm.code}
                       rows="12"
                       placeholder={skillForm.language === "typescript" ? "export default async function() {\n  // Your code here\n  return { result: 'ok' };\n}" : "def run():\n    # Your code here\n    return {'result': 'ok'}"}
@@ -1270,8 +1280,9 @@
                   </div>
                   <div class="grid grid-cols-3 gap-4">
                     <div>
-                      <label class="text-xs text-warm-500 mb-1 block">Trigger Type</label>
+                      <label for="skill-trigger-type" class="text-xs text-warm-500 mb-1 block">Trigger Type</label>
                       <select
+                        id="skill-trigger-type"
                         bind:value={skillForm.triggerType}
                         class="w-full px-3 py-2 border border-warm-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500"
                       >
@@ -1282,8 +1293,9 @@
                       </select>
                     </div>
                     <div>
-                      <label class="text-xs text-warm-500 mb-1 block">Trigger Value</label>
+                      <label for="skill-trigger-value" class="text-xs text-warm-500 mb-1 block">Trigger Value</label>
                       <input
+                        id="skill-trigger-value"
                         type="text"
                         bind:value={skillForm.triggerValue}
                         placeholder={skillForm.triggerType === "cron" ? "0 * * * *" : skillForm.triggerType === "event" ? "message.received" : ""}
@@ -1291,8 +1303,9 @@
                       />
                     </div>
                     <div>
-                      <label class="text-xs text-warm-500 mb-1 block">Timeout (s)</label>
+                      <label for="skill-timeout" class="text-xs text-warm-500 mb-1 block">Timeout (s)</label>
                       <input
+                        id="skill-timeout"
                         type="number"
                         bind:value={skillForm.timeout}
                         min="1"
@@ -1360,7 +1373,7 @@
     {#if error && instance}
       <div class="fixed bottom-6 right-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-5 py-3 text-sm shadow-lg z-50 flex items-center gap-3">
         <span>{error}</span>
-        <button onclick={() => error = ""} class="text-red-400 hover:text-red-600">
+        <button onclick={() => error = ""} class="text-red-400 hover:text-red-600" aria-label="Dismiss error">
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>

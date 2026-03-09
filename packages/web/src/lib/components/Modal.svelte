@@ -35,14 +35,19 @@
 
 {#if open}
   <!-- Backdrop -->
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="fixed inset-0 bg-black/50 z-50 animate-fade-up"
     onclick={onClose}
-    role="dialog"
-    aria-modal="true"
+    role="presentation"
+    aria-hidden="true"
   >
     <!-- Modal -->
     <div
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
       class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full {sizeClasses[size]} bg-white rounded-2xl shadow-xl"
       onclick={(e) => e.stopPropagation()}
     >

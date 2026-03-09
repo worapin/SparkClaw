@@ -204,8 +204,9 @@
     </div>
 
     <!-- Footer -->
-    <div class="mt-auto pt-8 flex items-center justify-between text-sm text-warm-400">\n      <span>© 2026 WiseSpark Co., Ltd.</span>
-      <a href="#" class="hover:text-warm-600">Privacy Policy</a>
+    <div class="mt-auto pt-8 flex items-center justify-between text-sm text-warm-400">
+      <span>© 2026 WiseSpark Co., Ltd.</span>
+      <button type="button" class="hover:text-warm-600">Privacy Policy</button>
     </div>
   </div>
 

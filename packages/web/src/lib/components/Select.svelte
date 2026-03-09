@@ -11,12 +11,14 @@
     options: Option[];
     error?: string;
     value?: string;
+    id?: string;
   }
 
   let {
     label,
     options,
     error,
+    id = `select-${crypto.randomUUID()}`,
     value = $bindable(""),
     ...restProps
   }: Props = $props();
@@ -24,11 +26,12 @@
 
 <div class="w-full">
   {#if label}
-    <label class="block text-sm font-medium text-warm-700 mb-1.5">
+    <label for={id} class="block text-sm font-medium text-warm-700 mb-1.5">
       {label}
     </label>
   {/if}
   <select
+    {id}
     bind:value
     class="w-full px-4 py-2.5 text-sm rounded-xl border bg-white transition-all duration-200
       {error ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-warm-200 focus:border-terra-500 focus:ring-terra-500'}

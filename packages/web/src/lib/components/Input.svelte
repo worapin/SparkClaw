@@ -8,6 +8,7 @@
     error?: string;
     hint?: string;
     inputSize?: InputSize;
+    id?: string;
   }
 
   let {
@@ -15,6 +16,7 @@
     error,
     hint,
     inputSize = "md",
+    id = `input-${crypto.randomUUID()}`,
     value = $bindable(""),
     ...restProps
   }: Props = $props();
@@ -28,11 +30,12 @@
 
 <div class="w-full">
   {#if label}
-    <label class="block text-sm font-medium text-warm-700 mb-1.5">
+    <label for={id} class="block text-sm font-medium text-warm-700 mb-1.5">
       {label}
     </label>
   {/if}
   <input
+    {id}
     bind:value
     class="w-full rounded-xl border bg-white transition-all duration-200
       {sizeClasses[inputSize]}
