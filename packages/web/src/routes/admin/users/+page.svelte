@@ -10,7 +10,8 @@
     role: string;
     createdAt: string;
     subscription: { plan: string; status: string } | null;
-    instance: { status: string; url: string | null } | null;
+    instances: { id: string; status: string; url: string | null }[];
+    instanceCount: number;
   }>>([]);
   let pagination = $state({ page: 1, totalPages: 1, total: 0 });
   let search = $state("");
@@ -81,7 +82,7 @@
             email: u.email,
             role: u.role,
             plan: u.subscription?.plan ?? "-",
-            instanceStatus: u.instance?.status ?? "-",
+            instanceStatus: u.instances.length > 0 ? `${u.instanceCount} instance${u.instanceCount !== 1 ? 's' : ''}` : "-",
             createdAt: new Date(u.createdAt).toLocaleDateString(),
           }))}
         />

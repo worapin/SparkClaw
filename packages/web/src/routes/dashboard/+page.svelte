@@ -2,15 +2,19 @@
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
-  import { getMe, getInstance, createCheckout, logout } from "$lib/api";
+  import { getMe, getInstances, createInstance, deleteInstance, createCheckout, logout } from "$lib/api";
   import { planSchema } from "@sparkclaw/shared/schemas";
   import type { MeResponse, InstanceResponse } from "@sparkclaw/shared/types";
+  import { userInstances, selectedInstanceId } from "$lib/stores/instance";
 
   let user = $state<MeResponse | null>(null);
-  let instance = $state<InstanceResponse | null>(null);
+  let instances = $state<InstanceResponse[]>([]);
   let loading = $state(true);
   let error = $state("");
-  let pollingActive = $state(false);
+  let creating = $state(false);
+  let showUpgradeModal = $state(false);
+  let deleteConfirmId = $state<string | null>(null);
+  let deleting = $state(false);
 
   let pollTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -24,6 +28,8 @@
   async function loadDashboard() {
     try {
       user = await getMe();
+
+      // Handle ?plan= redirect to checkout
       const rawPlan = page.url.searchParams.get("plan");
       if (rawPlan && !user.subscription) {
         const parsed = planSchema.safeParse(rawPlan);
@@ -33,8 +39,9 @@
           return;
         }
       }
+
       if (user.subscription) {
-        await refreshInstance();
+        await refreshInstances();
       }
     } catch {
       goto("/auth");
@@ -44,30 +51,103 @@
     }
   }
 
-  async function refreshInstance() {
-    const result = await getInstance();
-    if ("id" in result) {
-      instance = result;
-      if (result.status === "pending" && !pollingActive) startPolling();
-      else if (result.status !== "pending") stopPolling();
+  async function refreshInstances() {
+    const result = await getInstances();
+    instances = result.instances;
+    userInstances.set(instances);
+
+    // Auto-select first instance if none selected
+    if (instances.length > 0) {
+      selectedInstanceId.subscribe((id) => {
+        if (!id || !instances.find((i) => i.id === id)) {
+          selectedInstanceId.set(instances[0].id);
+        }
+      })();
+    }
+
+    // Poll if any instance is pending
+    const hasPending = instances.some((i) => i.status === "pending");
+    if (hasPending && !pollTimer) {
+      pollTimer = setInterval(async () => {
+        try {
+          const r = await getInstances();
+          instances = r.instances;
+          userInstances.set(instances);
+          if (!r.instances.some((i) => i.status === "pending")) {
+            clearInterval(pollTimer);
+            pollTimer = undefined;
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 5000);
+    } else if (!hasPending && pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = undefined;
     }
   }
 
-  function startPolling() {
-    pollingActive = true;
-    pollTimer = setInterval(async () => {
-      try { await refreshInstance(); } catch { stopPolling(); }
-    }, 5000);
+  async function handleCreateInstance() {
+    if (!user) return;
+    if (user.instanceCount >= user.instanceLimit) {
+      showUpgradeModal = true;
+      return;
+    }
+    creating = true;
+    error = "";
+    try {
+      await createInstance();
+      user = await getMe();
+      await refreshInstances();
+    } catch (e) {
+      const msg = (e as Error).message;
+      if (msg.includes("limit") || msg.includes("UPGRADE")) {
+        showUpgradeModal = true;
+      } else {
+        error = msg;
+      }
+    } finally {
+      creating = false;
+    }
   }
 
-  function stopPolling() {
-    pollingActive = false;
-    if (pollTimer) { clearInterval(pollTimer); pollTimer = undefined; }
+  async function handleDeleteInstance(id: string) {
+    deleting = true;
+    error = "";
+    try {
+      await deleteInstance(id);
+      user = await getMe();
+      await refreshInstances();
+    } catch (e) {
+      error = (e as Error).message;
+    } finally {
+      deleting = false;
+      deleteConfirmId = null;
+    }
   }
 
   async function handleLogout() {
     await logout();
     goto("/");
+  }
+
+  function statusColor(status: string) {
+    switch (status) {
+      case "ready": return "bg-green-500";
+      case "pending": return "bg-amber-500";
+      case "error": return "bg-red-500";
+      default: return "bg-warm-400";
+    }
+  }
+
+  function statusLabel(status: string) {
+    switch (status) {
+      case "ready": return "Ready";
+      case "pending": return "Provisioning";
+      case "error": return "Error";
+      case "suspended": return "Suspended";
+      default: return status;
+    }
   }
 </script>
 
@@ -76,7 +156,8 @@
 </svelte:head>
 
 <section class="pt-24 pb-20 px-6">
-  <div class="max-w-4xl mx-auto">
+  <div class="max-w-5xl mx-auto">
+    <!-- Header -->
     <div class="flex items-center justify-between mb-8">
       <div>
         <h1 class="font-display text-3xl">Dashboard</h1>
@@ -107,85 +188,99 @@
         <a href="/pricing" class="btn-lift inline-block bg-terra-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-terra-600 transition-colors">Choose a Plan</a>
       </div>
     {:else}
-      <div class="grid md:grid-cols-3 gap-6 stagger">
-        <!-- Subscription card -->
-        <div class="md:col-span-1 bg-white rounded-2xl border border-warm-200 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-display text-lg">Plan</h2>
-            <span class="text-xs font-semibold bg-green-50 text-green-700 px-2.5 py-1 rounded-full">{user.subscription.status}</span>
+      <!-- Plan info bar -->
+      <div class="flex items-center justify-between bg-white rounded-2xl border border-warm-200 p-5 mb-6">
+        <div class="flex items-center gap-4">
+          <div>
+            <span class="font-display text-lg capitalize text-terra-500">{user.subscription.plan}</span>
+            <span class="text-warm-400 text-sm ml-2">plan</span>
           </div>
-          <div class="mb-4">
-            <div class="font-display text-3xl text-terra-500 capitalize">{user.subscription.plan}</div>
+          <div class="h-6 w-px bg-warm-200"></div>
+          <div class="text-sm text-warm-500">
+            {user.instanceCount} / {user.instanceLimit} instances
           </div>
-          <a href="/account" class="block w-full text-sm font-medium text-warm-600 text-center border border-warm-200 rounded-lg py-2 hover:bg-warm-50 transition-colors">
-            Manage plan
-          </a>
         </div>
+        <button
+          onclick={handleCreateInstance}
+          disabled={creating}
+          class="btn-lift bg-terra-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-terra-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+        >
+          {#if creating}
+            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+            Creating...
+          {:else}
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            New Instance
+          {/if}
+        </button>
+      </div>
 
-        <!-- Instance card -->
-        <div class="md:col-span-2 bg-white rounded-2xl border border-warm-200 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="font-display text-lg">Instance</h2>
-            {#if instance}
-              <div class="flex items-center gap-2">
-                {#if instance.status === "ready"}
-                  <span class="w-2.5 h-2.5 bg-green-500 rounded-full pulse-dot"></span>
-                  <span class="text-xs font-semibold text-green-700">Ready</span>
-                {:else if instance.status === "pending"}
-                  <span class="w-2.5 h-2.5 bg-amber-500 rounded-full pulse-dot"></span>
-                  <span class="text-xs font-semibold text-amber-700">Provisioning</span>
-                {:else if instance.status === "error"}
-                  <span class="w-2.5 h-2.5 bg-red-500 rounded-full"></span>
-                  <span class="text-xs font-semibold text-red-700">Error</span>
-                {:else}
-                  <span class="w-2.5 h-2.5 bg-warm-400 rounded-full"></span>
-                  <span class="text-xs font-semibold text-warm-600">Suspended</span>
-                {/if}
+      <!-- Instance grid -->
+      {#if instances.length === 0}
+        <div class="bg-white rounded-2xl border border-warm-200 p-12 text-center">
+          <div class="w-8 h-8 border-3 border-warm-200 border-t-terra-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p class="text-warm-500">Spinning up your first OpenClaw instance...</p>
+          <p class="text-warm-400 text-sm mt-1">This usually takes about a minute. Auto-refreshing...</p>
+        </div>
+      {:else}
+        <div class="grid md:grid-cols-2 gap-4 stagger">
+          {#each instances as inst (inst.id)}
+            <div class="bg-white rounded-2xl border border-warm-200 p-6 card-hover">
+              <!-- Instance header -->
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-display text-lg truncate">{inst.instanceName || `Instance ${inst.id.slice(0, 8)}`}</h3>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="w-2.5 h-2.5 rounded-full {statusColor(inst.status)} {inst.status === 'pending' ? 'animate-pulse' : ''}"></span>
+                  <span class="text-xs font-semibold {inst.status === 'ready' ? 'text-green-700' : inst.status === 'pending' ? 'text-amber-700' : inst.status === 'error' ? 'text-red-700' : 'text-warm-600'}">{statusLabel(inst.status)}</span>
+                </div>
               </div>
-            {/if}
-          </div>
 
-          {#if !instance || instance.status === "pending"}
-            <div class="text-center py-6">
-              <div class="w-8 h-8 border-3 border-warm-200 border-t-terra-500 rounded-full animate-spin mx-auto mb-4"></div>
-              <p class="text-warm-500">Spinning up your OpenClaw instance...</p>
-              <p class="text-warm-400 text-sm mt-1">This usually takes about a minute. Auto-refreshing...</p>
-            </div>
-          {:else if instance.status === "ready"}
-            <div class="bg-warm-50 rounded-xl p-4 border border-warm-100 mb-4">
-              <div class="text-sm text-warm-500 mb-1">Instance URL</div>
-              {#if instance.customDomain && instance.domainStatus === "ready"}
-                <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
-                <div class="text-xs text-warm-400 mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                  Custom domain active
+              {#if inst.status === "pending"}
+                <div class="text-center py-4">
+                  <div class="w-6 h-6 border-2 border-warm-200 border-t-terra-500 rounded-full animate-spin mx-auto mb-3"></div>
+                  <p class="text-warm-400 text-sm">Provisioning...</p>
                 </div>
-              {:else if instance.customDomain}
-                <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
-                <div class="text-xs text-amber-600 mt-1 flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                  Custom domain: {instance.domainStatus}
+              {:else if inst.status === "ready"}
+                <!-- URL -->
+                <div class="bg-warm-50 rounded-xl p-3 border border-warm-100 mb-4">
+                  <div class="text-xs text-warm-400 mb-1">URL</div>
+                  <a href={inst.url} target="_blank" rel="noopener" class="text-terra-500 text-sm font-medium hover:underline break-all">{inst.customDomain || inst.url}</a>
+                  {#if inst.customDomain && inst.domainStatus === "ready"}
+                    <div class="text-xs text-warm-400 mt-1 flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                      Custom domain active
+                    </div>
+                  {:else if inst.customDomain && inst.domainStatus !== "ready"}
+                    <div class="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+                      Domain: {inst.domainStatus}
+                    </div>
+                  {/if}
                 </div>
-              {:else}
-                <a href={instance.url} target="_blank" rel="noopener" class="text-terra-500 font-medium hover:underline break-all">{instance.url}</a>
+
+                <!-- Actions -->
+                <div class="flex gap-2">
+                  <a href="/setup?instance={inst.id}" class="btn-lift flex-1 bg-terra-500 text-white py-2 rounded-xl font-semibold text-xs text-center hover:bg-terra-600 transition-colors">Setup</a>
+                  <a href={inst.url} target="_blank" rel="noopener" class="flex-1 bg-warm-100 text-warm-700 py-2 rounded-xl font-semibold text-xs text-center hover:bg-warm-200 transition-colors border border-warm-200">Console</a>
+                  <button onclick={() => deleteConfirmId = inst.id} class="px-3 py-2 rounded-xl text-warm-400 hover:text-red-600 hover:bg-red-50 transition-colors border border-warm-200">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              {:else if inst.status === "error"}
+                <div class="bg-red-50 border border-red-200 rounded-xl p-3 mb-3">
+                  <p class="text-red-700 text-sm">Provisioning failed. Contact support.</p>
+                </div>
+                <button onclick={() => deleteConfirmId = inst.id} class="text-xs text-red-600 hover:underline">Remove</button>
+              {:else if inst.status === "suspended"}
+                <div class="text-center py-3">
+                  <p class="text-warm-500 text-sm mb-3">Subscription canceled. Instance suspended.</p>
+                  <a href="/pricing" class="text-xs font-semibold text-terra-500 hover:text-terra-600">Re-subscribe</a>
+                </div>
               {/if}
             </div>
-            <div class="flex gap-3">
-              <a href="{instance.url}/setup" target="_blank" rel="noopener" class="btn-lift flex-1 bg-terra-500 text-white py-2.5 rounded-xl font-semibold text-sm text-center hover:bg-terra-600 transition-colors">Open Setup</a>
-              <a href={instance.url} target="_blank" rel="noopener" class="flex-1 bg-warm-100 text-warm-700 py-2.5 rounded-xl font-semibold text-sm text-center hover:bg-warm-200 transition-colors border border-warm-200">Open Console</a>
-            </div>
-          {:else if instance.status === "error"}
-            <div class="bg-red-50 border border-red-200 rounded-xl p-4">
-              <p class="text-red-700 font-medium text-sm">We couldn't create your instance. Please contact support.</p>
-            </div>
-          {:else if instance.status === "suspended"}
-            <div class="text-center py-4">
-              <p class="text-warm-500 mb-4">Your subscription has been canceled. Instance is suspended.</p>
-              <a href="/pricing" class="btn-lift inline-block bg-terra-500 text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-terra-600 transition-colors">Re-subscribe</a>
-            </div>
-          {/if}
+          {/each}
         </div>
-      </div>
+      {/if}
 
       <!-- Quick actions -->
       <div class="mt-8">
@@ -210,6 +305,44 @@
       </div>
     {/if}
 
+    <!-- Delete Confirmation Modal -->
+    {#if deleteConfirmId}
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <h3 class="font-display text-xl mb-2">Delete Instance?</h3>
+          <p class="text-warm-500 text-sm mb-6">This will permanently delete the instance and all its channel configurations. This cannot be undone.</p>
+          <div class="flex gap-3">
+            <button onclick={() => deleteConfirmId = null} class="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-warm-200 text-warm-700 hover:bg-warm-50 transition-colors">Cancel</button>
+            <button
+              onclick={() => deleteConfirmId && handleDeleteInstance(deleteConfirmId)}
+              disabled={deleting}
+              class="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Upgrade Modal -->
+    {#if showUpgradeModal}
+      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <h3 class="font-display text-xl mb-2">Instance Limit Reached</h3>
+          <p class="text-warm-500 text-sm mb-2">
+            Your <span class="font-semibold capitalize">{user?.subscription?.plan}</span> plan allows up to <span class="font-semibold">{user?.instanceLimit}</span> instance{user?.instanceLimit === 1 ? '' : 's'}.
+          </p>
+          <p class="text-warm-500 text-sm mb-6">Upgrade your plan to create more instances.</p>
+          <div class="flex gap-3">
+            <button onclick={() => showUpgradeModal = false} class="flex-1 py-2.5 rounded-xl font-semibold text-sm border border-warm-200 text-warm-700 hover:bg-warm-50 transition-colors">Cancel</button>
+            <a href="/pricing" class="flex-1 btn-lift py-2.5 rounded-xl font-semibold text-sm bg-terra-500 text-white text-center hover:bg-terra-600 transition-colors">Upgrade Plan</a>
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    <!-- Error toast -->
     {#if error}
       <div class="fixed bottom-6 right-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-5 py-3 text-sm shadow-lg animate-fade-up z-50">
         {error}

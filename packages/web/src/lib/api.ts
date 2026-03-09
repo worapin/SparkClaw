@@ -18,6 +18,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ── Auth ──────────────────────────────────────────────────────────────────────
+
 export async function sendOtp(email: string) {
   return request<{ ok: boolean }>("/auth/send-otp", {
     method: "POST",
@@ -36,13 +38,41 @@ export async function logout() {
   return request<{ ok: boolean }>("/auth/logout", { method: "POST" });
 }
 
+// ── User ──────────────────────────────────────────────────────────────────────
+
 export async function getMe() {
   return request<MeResponse>("/api/me");
 }
 
+// ── Instances ─────────────────────────────────────────────────────────────────
+
+export async function getInstances() {
+  return request<{ instances: InstanceResponse[] }>("/api/instances");
+}
+
+export async function getInstanceById(id: string) {
+  return request<InstanceResponse>(`/api/instances/${id}`);
+}
+
+export async function createInstance(instanceName?: string) {
+  return request<{ success: boolean; message: string }>("/api/instances", {
+    method: "POST",
+    body: JSON.stringify({ instanceName }),
+  });
+}
+
+export async function deleteInstance(id: string) {
+  return request<{ success: boolean }>(`/api/instances/${id}`, {
+    method: "DELETE",
+  });
+}
+
+/** @deprecated Use getInstances() instead */
 export async function getInstance() {
   return request<InstanceResponse | { instance: null }>("/api/instance");
 }
+
+// ── Checkout ──────────────────────────────────────────────────────────────────
 
 export async function createCheckout(plan: Plan) {
   return request<{ url: string }>("/api/checkout", {
@@ -51,8 +81,10 @@ export async function createCheckout(plan: Plan) {
   });
 }
 
-export async function getSetupState() {
-  return request<{ state: SetupWizardState | null }>("/api/setup/state");
+// ── Setup ─────────────────────────────────────────────────────────────────────
+
+export async function getSetupState(instanceId: string) {
+  return request<{ state: SetupWizardState | null }>(`/api/setup/state?instanceId=${instanceId}`);
 }
 
 export async function saveSetup(data: SaveSetupInput) {
@@ -61,6 +93,8 @@ export async function saveSetup(data: SaveSetupInput) {
     body: JSON.stringify(data),
   });
 }
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
 
 export async function checkAdmin() {
   return request<{ isAdmin: boolean; user: { id: string; email: string } | null }>("/api/admin/check");
@@ -85,7 +119,8 @@ export async function getAdminUsers(page: number = 1, search: string = "") {
       role: string;
       createdAt: string;
       subscription: { plan: string; status: string } | null;
-      instance: { status: string; url: string | null } | null;
+      instances: Array<{ id: string; status: string; url: string | null }>;
+      instanceCount: number;
     }>;
     pagination: { page: number; totalPages: number; total: number };
   }>(`/api/admin/users?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ""}`);

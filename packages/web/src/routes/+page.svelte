@@ -3,8 +3,8 @@
 
   const plans: { key: Plan; name: string; price: number; features: string[] }[] = [
     { key: "starter", name: "Starter", price: 19, features: ["1 OpenClaw instance", "All 25+ channels", "Community support"] },
-    { key: "pro", name: "Pro", price: 39, features: ["1 OpenClaw instance", "All 25+ channels", "Priority support", "Custom domain (soon)"] },
-    { key: "scale", name: "Scale", price: 79, features: ["1 OpenClaw instance", "All 25+ channels", "Priority support", "Higher resources", "Custom domain (soon)"] },
+    { key: "pro", name: "Pro", price: 39, features: ["Up to 3 instances", "All 25+ channels", "Priority support", "Custom domain (soon)"] },
+    { key: "scale", name: "Scale", price: 79, features: ["Up to 10 instances", "All 25+ channels", "Priority support", "Higher resources", "Custom domain (soon)"] },
   ];
 </script>
 

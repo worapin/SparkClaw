@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
-import { 
-  saveSetupSchema, 
-  saveChannelCredentialsSchema
+import {
+  saveSetupSchema,
+  saveChannelCredentialsSchema,
 } from "@sparkclaw/shared/schemas";
 import { SESSION_COOKIE_NAME } from "@sparkclaw/shared/constants";
 import type { SetupWizardState } from "@sparkclaw/shared/types";
@@ -9,9 +9,16 @@ import type { SaveSetupInput } from "@sparkclaw/shared/schemas";
 import { csrfMiddleware } from "../middleware/csrf.js";
 import { verifySession } from "../services/session.js";
 import { db, instances, channelConfigs } from "@sparkclaw/shared/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { configureOpenClaw } from "../services/openclaw.js";
+
+/** Find instance by ID and verify it belongs to the user */
+async function findUserInstance(instanceId: string, userId: string) {
+  return db.query.instances.findFirst({
+    where: and(eq(instances.id, instanceId), eq(instances.userId, userId)),
+  });
+}
 
 export const setupRoutes = new Elysia({ prefix: "/api/setup" })
   .use(csrfMiddleware)
@@ -30,10 +37,16 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 
     return { user };
   })
-  // Get setup wizard state
-  .get("/state", async ({ user }) => {
+  // Get setup wizard state — requires ?instanceId= query param
+  .get("/state", async ({ user, query, set }) => {
+    const instanceId = query.instanceId as string;
+    if (!instanceId) {
+      set.status = 400;
+      return { error: "instanceId query parameter is required" };
+    }
+
     const instance = await db.query.instances.findFirst({
-      where: eq(instances.userId, user.id),
+      where: and(eq(instances.id, instanceId), eq(instances.userId, user.id)),
       with: { channelConfigs: true },
     });
 
@@ -54,14 +67,14 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
           enabled: c.enabled,
           credentials: c.credentials as Record<string, string> | undefined,
         })),
-        aiConfig: instance.aiConfig as any ?? {
+        aiConfig: (instance.aiConfig as any) ?? {
           model: "auto",
           persona: "friendly",
           language: "auto",
           temperature: 0.7,
           maxTokens: 4000,
         },
-        features: instance.features as any ?? {
+        features: (instance.features as any) ?? {
           imageGeneration: true,
           webSearch: true,
           fileProcessing: true,
@@ -77,7 +90,7 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 
     return { state };
   })
-  // Save setup wizard data
+  // Save setup wizard data — instanceId in body
   .post("/save", async ({ user, body, set }) => {
     const parsed = saveSetupSchema.safeParse(body);
     if (!parsed.success) {
@@ -86,10 +99,7 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
     }
 
     const data = parsed.data as SaveSetupInput;
-
-    const instance = await db.query.instances.findFirst({
-      where: eq(instances.userId, user.id),
-    });
+    const instance = await findUserInstance(data.instanceId, user.id);
 
     if (!instance) {
       set.status = 404;
@@ -112,8 +122,8 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
     // Save channel configurations
     for (const channel of data.channels) {
       const existing = await db.query.channelConfigs.findFirst({
-        where: (c, { and }) => 
-          and(eq(c.instanceId, instance.id), eq(c.type, channel.type)),
+        where: (c, { and: a }) =>
+          a(eq(c.instanceId, instance.id), eq(c.type, channel.type)),
       });
 
       if (existing) {
@@ -135,16 +145,20 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
       }
     }
 
-    logger.info("Setup wizard completed", { 
-      userId: user.id, 
+    logger.info("Setup wizard completed", {
+      userId: user.id,
       instanceId: instance.id,
-      channels: data.channels.filter((c: { enabled: boolean }) => c.enabled).map((c: { type: string }) => c.type),
+      channels: data.channels
+        .filter((c: { enabled: boolean }) => c.enabled)
+        .map((c: { type: string }) => c.type),
     });
 
     // Configure OpenClaw with the new settings
     if (instance.url) {
-      const gatewayToken = Buffer.from(`${instance.id}:${process.env.SESSION_SECRET}`).toString("base64");
-      
+      const gatewayToken = Buffer.from(
+        `${instance.id}:${process.env.SESSION_SECRET}`,
+      ).toString("base64");
+
       try {
         await configureOpenClaw(instance.url, {
           instanceId: instance.id,
@@ -152,17 +166,16 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
           gatewayToken,
         });
       } catch (error) {
-        logger.warn("Failed to configure OpenClaw", { 
-          instanceId: instance.id, 
-          error: (error as Error).message 
+        logger.warn("Failed to configure OpenClaw", {
+          instanceId: instance.id,
+          error: (error as Error).message,
         });
-        // Continue - instance is still usable
       }
     }
 
     return { success: true };
   })
-  // Save channel credentials (separate endpoint for security)
+  // Save channel credentials — instanceId in body
   .post("/channel", async ({ user, body, set }) => {
     const parsed = saveChannelCredentialsSchema.safeParse(body);
     if (!parsed.success) {
@@ -170,21 +183,17 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
       return { error: "Invalid channel data", details: parsed.error.errors };
     }
 
-    const { type, credentials } = parsed.data;
-
-    const instance = await db.query.instances.findFirst({
-      where: eq(instances.userId, user.id),
-    });
+    const { instanceId, type, credentials } = parsed.data;
+    const instance = await findUserInstance(instanceId, user.id);
 
     if (!instance) {
       set.status = 404;
       return { error: "Instance not found" };
     }
 
-    // Upsert channel config
     const existing = await db.query.channelConfigs.findFirst({
-      where: (c, { and }) => 
-        and(eq(c.instanceId, instance.id), eq(c.type, type)),
+      where: (c, { and: a }) =>
+        a(eq(c.instanceId, instance.id), eq(c.type, type)),
     });
 
     if (existing) {
@@ -205,19 +214,23 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
       });
     }
 
-    logger.info("Channel credentials saved", { 
-      userId: user.id, 
+    logger.info("Channel credentials saved", {
+      userId: user.id,
       instanceId: instance.id,
       channelType: type,
     });
 
     return { success: true };
   })
-  // Delete channel configuration
-  .delete("/channel/:type", async ({ user, params, set }) => {
-    const instance = await db.query.instances.findFirst({
-      where: eq(instances.userId, user.id),
-    });
+  // Delete channel — instanceId in query param
+  .delete("/channel/:type", async ({ user, params, query, set }) => {
+    const instanceId = query.instanceId as string;
+    if (!instanceId) {
+      set.status = 400;
+      return { error: "instanceId query parameter is required" };
+    }
+
+    const instance = await findUserInstance(instanceId, user.id);
 
     if (!instance) {
       set.status = 404;
@@ -226,10 +239,15 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
 
     await db
       .delete(channelConfigs)
-      .where(eq(channelConfigs.instanceId, instance.id));
+      .where(
+        and(
+          eq(channelConfigs.instanceId, instance.id),
+          eq(channelConfigs.type, params.type),
+        ),
+      );
 
-    logger.info("Channel configuration deleted", { 
-      userId: user.id, 
+    logger.info("Channel configuration deleted", {
+      userId: user.id,
       instanceId: instance.id,
       channelType: params.type,
     });

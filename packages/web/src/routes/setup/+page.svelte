@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { goto } from "$app/navigation";
+  import { page } from "$app/state";
   import { getSetupState, saveSetup } from "$lib/api";
   import type { SetupWizardState, SetupChannelConfig, AIConfig, FeatureFlags } from "@sparkclaw/shared/types";
 
@@ -32,6 +33,8 @@
     email: false,
   });
   let customPrompt = $state("");
+
+  const instanceId = page.url.searchParams.get("instance");
 
   const channelOptions = [
     { id: "telegram", name: "Telegram", icon: "📱", description: "Connect via Telegram bot" },
@@ -73,17 +76,21 @@
   ];
 
   onMount(async () => {
+    if (!instanceId) {
+      goto("/dashboard");
+      return;
+    }
     try {
-      const result = await getSetupState();
-      if (result.wizardState) {
-        wizardState = result.wizardState;
-        step = result.wizardState.step;
-        if (result.wizardState.setupData) {
-          instanceName = result.wizardState.setupData.instanceName ?? "";
-          selectedChannels = result.wizardState.setupData.channels ?? [];
-          aiConfig = result.wizardState.setupData.aiConfig ?? aiConfig;
-          features = result.wizardState.setupData.features ?? features;
-          customPrompt = result.wizardState.setupData.aiConfig?.customPrompt ?? "";
+      const result = await getSetupState(instanceId);
+      if (result.state) {
+        wizardState = result.state;
+        step = result.state.step;
+        if (result.state.setupData) {
+          instanceName = result.state.setupData.instanceName ?? "";
+          selectedChannels = result.state.setupData.channels ?? [];
+          aiConfig = result.state.setupData.aiConfig ?? aiConfig;
+          features = result.state.setupData.features ?? features;
+          customPrompt = result.state.setupData.aiConfig?.customPrompt ?? "";
         }
       }
     } catch {
@@ -107,11 +114,13 @@
   }
 
   async function handleSave() {
+    if (!instanceId) return;
     saving = true;
     errorMsg = "";
 
     try {
       await saveSetup({
+        instanceId,
         instanceName: instanceName || undefined,
         channels: selectedChannels,
         aiConfig: {

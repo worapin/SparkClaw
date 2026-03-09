@@ -11,11 +11,11 @@
     },
     {
       key: "pro", name: "Pro", price: 39, tagline: "For creators and indie devs",
-      features: ["Everything in Starter", "Priority support", "Custom domain (soon)", "Advanced analytics"],
+      features: ["Up to 3 instances", "Everything in Starter", "Priority support", "Custom domain (soon)"],
     },
     {
       key: "scale", name: "Scale", price: 79, tagline: "For agencies and growing teams",
-      features: ["Everything in Pro", "Higher resources", "Custom domain (soon)", "Dedicated support"],
+      features: ["Up to 10 instances", "Everything in Pro", "Higher resources", "Dedicated support"],
     },
   ];
 

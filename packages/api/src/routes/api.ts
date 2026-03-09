@@ -1,12 +1,37 @@
 import { Elysia } from "elysia";
-import { createCheckoutSchema } from "@sparkclaw/shared/schemas";
-import { SESSION_COOKIE_NAME } from "@sparkclaw/shared/constants";
-import type { MeResponse, InstanceResponse, User, DomainStatus } from "@sparkclaw/shared/types";
+import { createCheckoutSchema, createInstanceSchema } from "@sparkclaw/shared/schemas";
+import { SESSION_COOKIE_NAME, PLAN_INSTANCE_LIMITS } from "@sparkclaw/shared/constants";
+import type { MeResponse, InstanceResponse, DomainStatus, Plan } from "@sparkclaw/shared/types";
 import { csrfMiddleware } from "../middleware/csrf.js";
 import { createCheckoutSession } from "../services/stripe.js";
 import { verifySession } from "../services/session.js";
 import { db, subscriptions, instances } from "@sparkclaw/shared/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
+import { queueInstanceProvisioning } from "../services/queue.js";
+import { logger } from "../lib/logger.js";
+
+function toInstanceResponse(result: {
+  id: string;
+  instanceName: string | null;
+  status: string;
+  url: string | null;
+  customDomain: string | null;
+  domainStatus: string | null;
+  createdAt: Date;
+  subscription: { plan: string; status: string };
+}): InstanceResponse {
+  return {
+    id: result.id,
+    instanceName: result.instanceName,
+    status: result.status as InstanceResponse["status"],
+    url: result.url,
+    customDomain: result.customDomain,
+    domainStatus: (result.domainStatus as DomainStatus) ?? "pending",
+    plan: result.subscription.plan as InstanceResponse["plan"],
+    subscriptionStatus: result.subscription.status as InstanceResponse["subscriptionStatus"],
+    createdAt: result.createdAt.toISOString(),
+  };
+}
 
 export const apiRoutes = new Elysia({ prefix: "/api" })
   .use(csrfMiddleware)
@@ -31,10 +56,17 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
       return { error: err.message };
     }
   })
+  // ── GET /api/me ─────────────────────────────────────────────────────────────
   .get("/me", async ({ user }) => {
     const sub = await db.query.subscriptions.findFirst({
       where: eq(subscriptions.userId, user.id),
     });
+
+    const userInstances = await db.query.instances.findMany({
+      where: eq(instances.userId, user.id),
+    });
+
+    const plan = (sub?.plan as Plan) ?? "starter";
 
     const response: MeResponse = {
       id: user.id,
@@ -47,11 +79,102 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
             currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
           }
         : null,
+      instanceLimit: PLAN_INSTANCE_LIMITS[plan] ?? 1,
+      instanceCount: userInstances.length,
       createdAt: user.createdAt.toISOString(),
     };
 
     return response;
   })
+  // ── GET /api/instances ──────────────────────────────────────────────────────
+  .get("/instances", async ({ user }) => {
+    const results = await db.query.instances.findMany({
+      where: eq(instances.userId, user.id),
+      with: { subscription: true },
+      orderBy: (instances, { desc }) => [desc(instances.createdAt)],
+    });
+
+    return { instances: results.map(toInstanceResponse) };
+  })
+  // ── GET /api/instances/:id ──────────────────────────────────────────────────
+  .get("/instances/:id", async ({ user, params, set }) => {
+    const result = await db.query.instances.findFirst({
+      where: and(eq(instances.id, params.id), eq(instances.userId, user.id)),
+      with: { subscription: true },
+    });
+
+    if (!result) {
+      set.status = 404;
+      return { error: "Instance not found" };
+    }
+
+    return toInstanceResponse(result);
+  })
+  // ── POST /api/instances ─────────────────────────────────────────────────────
+  .post("/instances", async ({ user, body, set }) => {
+    const parsed = createInstanceSchema.safeParse(body);
+    if (!parsed.success) {
+      set.status = 400;
+      return { error: "Invalid input", details: parsed.error.errors };
+    }
+
+    const sub = await db.query.subscriptions.findFirst({
+      where: eq(subscriptions.userId, user.id),
+    });
+
+    if (!sub || sub.status !== "active") {
+      set.status = 403;
+      return { error: "Active subscription required" };
+    }
+
+    const plan = sub.plan as Plan;
+    const limit = PLAN_INSTANCE_LIMITS[plan] ?? 1;
+    const existing = await db.query.instances.findMany({
+      where: eq(instances.userId, user.id),
+    });
+
+    if (existing.length >= limit) {
+      set.status = 403;
+      return {
+        error: "Instance limit reached",
+        code: "UPGRADE_REQUIRED",
+        limit,
+        current: existing.length,
+      };
+    }
+
+    await queueInstanceProvisioning(user.id, sub.id);
+
+    logger.info("New instance creation requested", {
+      userId: user.id,
+      currentCount: existing.length,
+      limit,
+    });
+
+    return { success: true, message: "Instance provisioning started" };
+  })
+  // ── DELETE /api/instances/:id ───────────────────────────────────────────────
+  .delete("/instances/:id", async ({ user, params, set }) => {
+    const instance = await db.query.instances.findFirst({
+      where: and(eq(instances.id, params.id), eq(instances.userId, user.id)),
+    });
+
+    if (!instance) {
+      set.status = 404;
+      return { error: "Instance not found" };
+    }
+
+    // Delete from DB (cascade deletes channel_configs)
+    await db.delete(instances).where(eq(instances.id, params.id));
+
+    logger.info("Instance deleted", {
+      userId: user.id,
+      instanceId: params.id,
+    });
+
+    return { success: true };
+  })
+  // ── GET /api/instance (backward compat) ─────────────────────────────────────
   .get("/instance", async ({ user }) => {
     const result = await db.query.instances.findFirst({
       where: eq(instances.userId, user.id),
@@ -62,19 +185,9 @@ export const apiRoutes = new Elysia({ prefix: "/api" })
       return { instance: null };
     }
 
-    const response: InstanceResponse = {
-      id: result.id,
-      status: result.status as InstanceResponse["status"],
-      url: result.url,
-      customDomain: result.customDomain,
-      domainStatus: (result.domainStatus as DomainStatus) ?? "pending",
-      plan: result.subscription.plan as InstanceResponse["plan"],
-      subscriptionStatus: result.subscription.status as InstanceResponse["subscriptionStatus"],
-      createdAt: result.createdAt.toISOString(),
-    };
-
-    return response;
+    return toInstanceResponse(result);
   })
+  // ── POST /api/checkout ──────────────────────────────────────────────────────
   .post("/checkout", async ({ user, body, set }) => {
     const parsed = createCheckoutSchema.safeParse(body);
     if (!parsed.success) {

@@ -99,8 +99,6 @@ export async function queueInstanceProvisioning(
   const job = await queue.add("provision-instance", {
     userId,
     subscriptionId,
-  }, {
-    jobId: `provision-${subscriptionId}`, // Deduplicate by subscription
   });
 
   logger.info("Instance provisioning queued", { 

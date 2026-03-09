@@ -95,7 +95,7 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
       orderBy: [desc(users.createdAt)],
       with: {
         subscription: true,
-        instance: true,
+        instances: true,
       },
     });
 
@@ -116,10 +116,8 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
           plan: u.subscription.plan,
           status: u.subscription.status,
         } : null,
-        instance: u.instance ? {
-          status: u.instance.status,
-          url: u.instance.url,
-        } : null,
+        instances: u.instances.map(i => ({ id: i.id, status: i.status, url: i.url })),
+        instanceCount: u.instances.length,
       })),
       pagination: {
         page,
@@ -205,7 +203,7 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
       where: eq(users.id, params.id),
       with: {
         subscription: true,
-        instance: {
+        instances: {
           with: {
             channelConfigs: true,
           },
@@ -231,17 +229,17 @@ export const adminRoutes = new Elysia({ prefix: "/api/admin" })
         status: user.subscription.status,
         currentPeriodEnd: user.subscription.currentPeriodEnd?.toISOString(),
       } : null,
-      instance: user.instance ? {
-        id: user.instance.id,
-        status: user.instance.status,
-        url: user.instance.url,
-        customDomain: user.instance.customDomain,
-        setupCompleted: user.instance.setupCompleted,
-        channelConfigs: user.instance.channelConfigs?.map(c => ({
+      instances: user.instances.map(i => ({
+        id: i.id,
+        status: i.status,
+        url: i.url,
+        customDomain: i.customDomain,
+        setupCompleted: i.setupCompleted,
+        channelConfigs: i.channelConfigs?.map(c => ({
           type: c.type,
           enabled: c.enabled,
         })),
-      } : null,
+      })),
     };
   })
   // Check if current user is admin
