@@ -6,6 +6,7 @@
   import { planSchema } from "@sparkclaw/shared/schemas";
   import type { MeResponse, InstanceResponse } from "@sparkclaw/shared/types";
   import { userInstances, selectedInstanceId } from "$lib/stores/instance";
+  import Skeleton from "$lib/components/Skeleton.svelte";
 
   let user = $state<MeResponse | null>(null);
   let instances = $state<InstanceResponse[]>([]);
@@ -172,9 +173,31 @@
     </div>
 
     {#if loading}
-      <div class="bg-white rounded-2xl border border-warm-200 p-12 text-center">
-        <div class="w-8 h-8 border-3 border-warm-200 border-t-terra-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-warm-500">Loading your dashboard...</p>
+      <!-- Plan skeleton -->
+      <div class="flex items-center justify-between bg-white rounded-2xl border border-warm-200 p-5 mb-6">
+        <div class="flex items-center gap-4">
+          <Skeleton width="80px" height="24px" />
+          <div class="h-6 w-px bg-warm-200"></div>
+          <Skeleton width="100px" height="20px" />
+        </div>
+        <Skeleton width="120px" height="44px" rounded="xl" />
+      </div>
+
+      <!-- Instance skeletons -->
+      <div class="grid md:grid-cols-2 gap-4">
+        {#each Array(2) as _}
+          <div class="bg-white rounded-2xl border border-warm-200 p-6">
+            <div class="flex items-center justify-between mb-4">
+              <Skeleton width="150px" height="24px" />
+              <Skeleton width="60px" height="20px" rounded="full" />
+            </div>
+            <Skeleton width="100%" height="60px" class="mb-4" />
+            <div class="flex gap-2">
+              <Skeleton width="80px" height="36px" rounded="lg" />
+              <Skeleton width="80px" height="36px" rounded="lg" />
+            </div>
+          </div>
+        {/each}
       </div>
     {:else if !user}
       <p class="text-warm-500">Redirecting to login...</p>

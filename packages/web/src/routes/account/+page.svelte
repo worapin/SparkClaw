@@ -20,6 +20,7 @@
   } from "$lib/api";
   import { toasts } from "$lib/stores/toast";
   import type { MeResponse, ApiKeyResponse, LlmKeyResponse } from "@sparkclaw/shared/types";
+  import Skeleton from "$lib/components/Skeleton.svelte";
 
   const ALL_SCOPES = ["instance:read", "instance:write", "setup:read", "setup:write"] as const;
   const LLM_PROVIDERS = ["openai", "anthropic", "google", "ollama"] as const;
@@ -286,9 +287,48 @@
     </div>
 
     {#if loading}
-      <div class="bg-white rounded-2xl border border-warm-200 p-12 text-center">
-        <div class="w-8 h-8 border-3 border-warm-200 border-t-terra-500 rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-warm-500">Loading...</p>
+      <!-- Profile skeleton -->
+      <div class="bg-white rounded-2xl border border-warm-200 p-6 mb-6">
+        <h2 class="font-display text-lg mb-4">Profile</h2>
+        <div class="flex items-center gap-4">
+          <Skeleton width="56px" height="56px" rounded="full" />
+          <div>
+            <Skeleton width="180px" height="20px" class="mb-2" />
+            <Skeleton width="140px" height="16px" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Security skeleton -->
+      <div class="bg-white rounded-2xl border border-warm-200 p-6 mb-6">
+        <h2 class="font-display text-lg mb-6">Security</h2>
+        <div class="mb-6">
+          <div class="flex items-center justify-between mb-3">
+            <Skeleton width="180px" height="20px" />
+            <Skeleton width="60px" height="24px" rounded="full" />
+          </div>
+          <Skeleton width="300px" height="16px" class="mb-4" />
+        </div>
+      </div>
+
+      <!-- API Keys skeleton -->
+      <div class="bg-white rounded-2xl border border-warm-200 p-6 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-display text-lg">API Keys</h2>
+        </div>
+        <Skeleton width="280px" height="16px" class="mb-4" />
+        <div class="p-4 bg-warm-50 rounded-xl">
+          <Skeleton width="200px" height="16px" />
+        </div>
+      </div>
+
+      <!-- Subscription skeleton -->
+      <div class="bg-white rounded-2xl border border-warm-200 p-6">
+        <h2 class="font-display text-lg mb-4">Subscription</h2>
+        <div class="p-4 bg-warm-50 rounded-xl border border-warm-100 mb-4">
+          <Skeleton width="100px" height="24px" class="mb-2" />
+          <Skeleton width="150px" height="16px" />
+        </div>
       </div>
     {:else if user}
       <!-- ── Profile ──────────────────────────────────────────────────────── -->

@@ -49,14 +49,23 @@
   // ── Logs ────────────────────────────────────────────────────────────────────
   let logs = $state<InstanceLogEntry[]>([]);
   let logFilter = $state<"all" | "info" | "warn" | "error" | "debug">("all");
+  let logSearch = $state("");
   let autoScroll = $state(true);
   let logStreamAbort: AbortController | null = null;
-  let logContainerEl: HTMLDivElement | undefined;
+  let logContainerEl = $state<HTMLDivElement | undefined>(undefined);
   let logsConnected = $state(false);
 
-  let filteredLogs = $derived(
-    logFilter === "all" ? logs : logs.filter((l) => l.level === logFilter)
-  );
+  let filteredLogs = $derived.by(() => {
+    let result = logs;
+    if (logFilter !== "all") {
+      result = result.filter((l) => l.level === logFilter);
+    }
+    if (logSearch.trim()) {
+      const search = logSearch.toLowerCase();
+      result = result.filter((l) => l.message.toLowerCase().includes(search));
+    }
+    return result;
+  });
 
   // ── Env Vars ────────────────────────────────────────────────────────────────
   let envVars = $state<EnvVarResponse[]>([]);
@@ -784,6 +793,14 @@
                 </div>
               </div>
               <div class="flex items-center gap-2">
+                <!-- Search -->
+                <input
+                  type="text"
+                  bind:value={logSearch}
+                  placeholder="Search logs..."
+                  class="text-xs border border-warm-200 rounded-lg px-3 py-1.5 text-warm-600 w-40 focus:outline-none focus:ring-2 focus:ring-terra-500/30 focus:border-terra-500"
+                />
+
                 <!-- Level filter -->
                 <select
                   bind:value={logFilter}
