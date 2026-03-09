@@ -161,3 +161,53 @@ export type CreateOrgInput = z.infer<typeof createOrgSchema>;
 export type InviteOrgMemberInput = z.infer<typeof inviteOrgMemberSchema>;
 export type CreateScheduledJobInput = z.infer<typeof createScheduledJobSchema>;
 export type UpdateScheduledJobInput = z.infer<typeof updateScheduledJobSchema>;
+
+// ─── Env Var schemas ────────────────────────────────────────────────────────
+
+export const createEnvVarSchema = z.object({
+  instanceId: z.string().uuid(),
+  key: z.string().min(1).max(255).regex(/^[A-Z_][A-Z0-9_]*$/, "Must be uppercase with underscores"),
+  value: z.string().min(1).max(10000),
+  isSecret: z.boolean().default(false),
+});
+
+export const updateEnvVarSchema = z.object({
+  value: z.string().min(1).max(10000),
+});
+
+// ─── Custom Skill schemas ───────────────────────────────────────────────────
+
+export const skillLanguageSchema = z.enum(["python", "typescript"]);
+export const skillTriggerTypeSchema = z.enum(["command", "event", "schedule"]);
+
+export const createCustomSkillSchema = z.object({
+  instanceId: z.string().uuid(),
+  name: z.string().min(1).max(100).regex(/^[a-z][a-z0-9_-]*$/, "Lowercase with hyphens/underscores"),
+  description: z.string().max(500).optional(),
+  language: skillLanguageSchema,
+  code: z.string().min(1).max(50000),
+  triggerType: skillTriggerTypeSchema.default("command"),
+  triggerValue: z.string().max(100).optional(),
+  timeout: z.number().min(1).max(300).default(30),
+});
+
+export const updateCustomSkillSchema = z.object({
+  description: z.string().max(500).optional(),
+  code: z.string().min(1).max(50000).optional(),
+  enabled: z.boolean().optional(),
+  triggerType: skillTriggerTypeSchema.optional(),
+  triggerValue: z.string().max(100).optional(),
+  timeout: z.number().min(1).max(300).optional(),
+});
+
+// ─── Instance Action schema ─────────────────────────────────────────────────
+
+export const instanceActionSchema = z.object({
+  action: z.enum(["start", "stop", "restart"]),
+});
+
+export type CreateEnvVarInput = z.infer<typeof createEnvVarSchema>;
+export type UpdateEnvVarInput = z.infer<typeof updateEnvVarSchema>;
+export type CreateCustomSkillInput = z.infer<typeof createCustomSkillSchema>;
+export type UpdateCustomSkillInput = z.infer<typeof updateCustomSkillSchema>;
+export type InstanceActionInput = z.infer<typeof instanceActionSchema>;

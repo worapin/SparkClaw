@@ -15,6 +15,8 @@ import type {
   orgInvites,
   usageRecords,
   scheduledJobs,
+  envVars,
+  customSkills,
 } from "./db/schema.js";
 
 // ─── Select types (read from DB) ────────────────────────────────────────────
@@ -52,6 +54,10 @@ export type NewOrgMember = InferInsertModel<typeof orgMembers>;
 export type NewOrgInvite = InferInsertModel<typeof orgInvites>;
 export type NewUsageRecord = InferInsertModel<typeof usageRecords>;
 export type NewScheduledJob = InferInsertModel<typeof scheduledJobs>;
+export type EnvVar = InferSelectModel<typeof envVars>;
+export type NewEnvVar = InferInsertModel<typeof envVars>;
+export type CustomSkill = InferSelectModel<typeof customSkills>;
+export type NewCustomSkill = InferInsertModel<typeof customSkills>;
 
 // ─── Domain types ────────────────────────────────────────────────────────────
 
@@ -65,6 +71,10 @@ export type LlmProvider = "openai" | "anthropic" | "google" | "ollama";
 export type ApiKeyScope = "instance:read" | "instance:write" | "setup:read" | "setup:write";
 export type UsageType = "llm_tokens" | "messages" | "file_storage" | "api_calls";
 export type ScheduledTaskType = "backup" | "report" | "data_sync" | "webhook";
+export type SkillLanguage = "python" | "typescript";
+export type SkillTriggerType = "command" | "event" | "schedule";
+export type SkillRunStatus = "success" | "error" | "timeout";
+export type InstanceAction = "start" | "stop" | "restart";
 
 // ─── API response types ─────────────────────────────────────────────────────
 
@@ -162,6 +172,58 @@ export interface InstanceResponse {
   plan: Plan;
   subscriptionStatus: SubscriptionStatus;
   createdAt: string;
+}
+
+export interface EnvVarResponse {
+  id: string;
+  key: string;
+  value: string; // masked if isSecret
+  isSecret: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CustomSkillResponse {
+  id: string;
+  instanceId: string;
+  name: string;
+  description: string | null;
+  language: SkillLanguage;
+  code: string;
+  enabled: boolean;
+  triggerType: SkillTriggerType;
+  triggerValue: string | null;
+  timeout: number;
+  lastRunAt: string | null;
+  lastRunStatus: SkillRunStatus | null;
+  lastRunOutput: string | null;
+  createdAt: string;
+}
+
+export interface InstanceHealthResponse {
+  instanceId: string;
+  status: InstanceStatus;
+  healthy: boolean;
+  uptime: number | null; // seconds
+  lastChecked: string;
+  checks: {
+    api: boolean;
+    channels: Record<string, boolean>;
+  };
+}
+
+export interface InstanceLogEntry {
+  timestamp: string;
+  level: "info" | "warn" | "error" | "debug";
+  message: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface SkillExecutionResult {
+  success: boolean;
+  output: string;
+  error: string | null;
+  duration: number; // ms
 }
 
 // ─── Setup Wizard types ──────────────────────────────────────────────────────

@@ -182,6 +182,8 @@ export const instancesRelations = relations(instances, ({ one, many }) => ({
   auditLogs: many(auditLogs),
   usageRecords: many(usageRecords),
   scheduledJobs: many(scheduledJobs),
+  envVars: many(envVars),
+  customSkills: many(customSkills),
 }));
 
 // ─── channel_configs ──────────────────────────────────────────────────────────
@@ -463,4 +465,62 @@ export const scheduledJobs = pgTable(
 
 export const scheduledJobsRelations = relations(scheduledJobs, ({ one }) => ({
   instance: one(instances, { fields: [scheduledJobs.instanceId], references: [instances.id] }),
+}));
+
+// ─── env_vars ─────────────────────────────────────────────────────────────────
+
+export const envVars = pgTable(
+  "env_vars",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instanceId: uuid("instance_id")
+      .notNull()
+      .references(() => instances.id, { onDelete: "cascade" }),
+    key: varchar("key", { length: 255 }).notNull(),
+    encryptedValue: text("encrypted_value").notNull(),
+    isSecret: boolean("is_secret").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("env_vars_instance_id_idx").on(table.instanceId),
+    uniqueIndex("env_vars_instance_key_idx").on(table.instanceId, table.key),
+  ],
+);
+
+export const envVarsRelations = relations(envVars, ({ one }) => ({
+  instance: one(instances, { fields: [envVars.instanceId], references: [instances.id] }),
+}));
+
+// ─── custom_skills ──────────────────────────────────────────────────────────
+
+export const customSkills = pgTable(
+  "custom_skills",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instanceId: uuid("instance_id")
+      .notNull()
+      .references(() => instances.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 100 }).notNull(),
+    description: text("description"),
+    language: varchar("language", { length: 10 }).notNull(), // "python" | "typescript"
+    code: text("code").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    triggerType: varchar("trigger_type", { length: 20 }).notNull().default("command"), // command | event | schedule
+    triggerValue: varchar("trigger_value", { length: 100 }), // command name, event name, or cron
+    timeout: integer("timeout").notNull().default(30), // seconds
+    lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+    lastRunStatus: varchar("last_run_status", { length: 20 }), // success | error | timeout
+    lastRunOutput: text("last_run_output"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("custom_skills_instance_id_idx").on(table.instanceId),
+    uniqueIndex("custom_skills_instance_name_idx").on(table.instanceId, table.name),
+  ],
+);
+
+export const customSkillsRelations = relations(customSkills, ({ one }) => ({
+  instance: one(instances, { fields: [customSkills.instanceId], references: [instances.id] }),
 }));

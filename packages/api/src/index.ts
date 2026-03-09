@@ -15,6 +15,9 @@ import { llmKeysRoutes } from "./routes/llm-keys.js";
 import { orgRoutes } from "./routes/orgs.js";
 import { usageRoutes } from "./routes/usage.js";
 import { scheduledJobsRoutes } from "./routes/scheduled-jobs.js";
+import { instanceActionsRoutes } from "./routes/instance-actions.js";
+import { envVarsRoutes } from "./routes/env-vars.js";
+import { customSkillsRoutes } from "./routes/custom-skills.js";
 
 const env = validateEnv();
 
@@ -39,6 +42,9 @@ const app = new Elysia()
   .use(orgRoutes)
   .use(usageRoutes)
   .use(scheduledJobsRoutes)
+  .use(instanceActionsRoutes)
+  .use(envVarsRoutes)
+  .use(customSkillsRoutes)
   .listen(env.PORT);
 
 logger.info("SparkClaw API started", { url: app.server?.url?.toString() });

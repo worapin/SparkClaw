@@ -1,4 +1,4 @@
-import type { MeResponse, InstanceResponse, Plan, SetupWizardState, ApiKeyResponse, LlmKeyResponse, OrgResponse, OrgMemberResponse, UsageSummary, ScheduledJobResponse, AuditLogResponse } from "@sparkclaw/shared/types";
+import type { MeResponse, InstanceResponse, Plan, SetupWizardState, ApiKeyResponse, LlmKeyResponse, OrgResponse, OrgMemberResponse, UsageSummary, ScheduledJobResponse, AuditLogResponse, EnvVarResponse, CustomSkillResponse, InstanceHealthResponse, InstanceLogEntry, SkillExecutionResult } from "@sparkclaw/shared/types";
 import type { SaveSetupInput } from "@sparkclaw/shared/schemas";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -240,4 +240,109 @@ export async function getAdminAuditLogs(page: number = 1, action?: string) {
     logs: AuditLogResponse[];
     pagination: { page: number; totalPages: number; total: number };
   }>(`/api/admin/audit?page=${page}${action ? `&action=${action}` : ""}`);
+}
+
+// ── Instance Actions ────────────────────────────────────────────────────────
+
+export async function instanceAction(id: string, action: "start" | "stop" | "restart") {
+  return request<{ success: boolean; action: string; status: string }>(`/api/instances/${id}/action`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+}
+
+export async function getInstanceHealth(id: string) {
+  return request<InstanceHealthResponse>(`/api/instances/${id}/health`);
+}
+
+export function getInstanceLogsUrl(id: string): string {
+  return `${API_BASE}/api/instances/${id}/logs`;
+}
+
+export async function getInstanceLogs(id: string) {
+  return request<{ logs: InstanceLogEntry[] }>(`/api/instances/${id}/logs`);
+}
+
+// ── Env Vars ────────────────────────────────────────────────────────────────
+
+export async function getEnvVars(instanceId: string) {
+  return request<{ vars: EnvVarResponse[] }>(`/api/env-vars?instanceId=${instanceId}`);
+}
+
+export async function createEnvVar(data: { instanceId: string; key: string; value: string; isSecret: boolean }) {
+  return request<{ success: boolean; id: string }>("/api/env-vars", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateEnvVar(id: string, value: string) {
+  return request<{ success: boolean }>(`/api/env-vars/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ value }),
+  });
+}
+
+export async function deleteEnvVar(id: string) {
+  return request<{ success: boolean }>(`/api/env-vars/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// ── Scheduled Jobs ──────────────────────────────────────────────────────────
+
+export async function getScheduledJobs(instanceId: string) {
+  return request<{ jobs: ScheduledJobResponse[] }>(`/api/jobs?instanceId=${instanceId}`);
+}
+
+export async function createScheduledJob(data: { instanceId: string; name: string; cronExpression: string; taskType: string; config?: Record<string, unknown> }) {
+  return request<{ success: boolean; id: string }>("/api/jobs", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateScheduledJob(id: string, data: { name?: string; cronExpression?: string; config?: Record<string, unknown>; enabled?: boolean }) {
+  return request<{ success: boolean }>(`/api/jobs/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteScheduledJob(id: string) {
+  return request<{ success: boolean }>(`/api/jobs/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// ── Custom Skills ───────────────────────────────────────────────────────────
+
+export async function getCustomSkills(instanceId: string) {
+  return request<{ skills: CustomSkillResponse[] }>(`/api/skills?instanceId=${instanceId}`);
+}
+
+export async function createCustomSkill(data: { instanceId: string; name: string; description?: string; language: string; code: string; triggerType?: string; triggerValue?: string; timeout?: number }) {
+  return request<{ success: boolean; id: string }>("/api/skills", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCustomSkill(id: string, data: { description?: string; code?: string; enabled?: boolean; triggerType?: string; triggerValue?: string; timeout?: number }) {
+  return request<{ success: boolean }>(`/api/skills/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCustomSkill(id: string) {
+  return request<{ success: boolean }>(`/api/skills/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function executeCustomSkill(id: string) {
+  return request<SkillExecutionResult>(`/api/skills/${id}/execute`, {
+    method: "POST",
+  });
 }
