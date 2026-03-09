@@ -26,7 +26,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   otpCodes: many(otpCodes),
   sessions: many(sessions),
   subscription: one(subscriptions),
-  instance: one(instances),
+  instances: many(instances),
 }));
 
 // ─── otp_codes ───────────────────────────────────────────────────────────────
@@ -99,9 +99,9 @@ export const subscriptions = pgTable(
   ],
 );
 
-export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
   user: one(users, { fields: [subscriptions.userId], references: [users.id] }),
-  instance: one(instances),
+  instances: many(instances),
 }));
 
 // ─── instances ───────────────────────────────────────────────────────────────
@@ -115,7 +115,6 @@ export const instances = pgTable(
       .references(() => users.id),
     subscriptionId: uuid("subscription_id")
       .notNull()
-      .unique()
       .references(() => subscriptions.id),
     railwayProjectId: varchar("railway_project_id", { length: 255 }).notNull(),
     railwayServiceId: varchar("railway_service_id", { length: 255 }),
@@ -158,7 +157,7 @@ export const instances = pgTable(
   },
   (table) => [
     index("instances_user_id_idx").on(table.userId),
-    uniqueIndex("instances_subscription_id_idx").on(table.subscriptionId),
+    index("instances_subscription_id_idx").on(table.subscriptionId),
     index("instances_status_idx").on(table.status),
     uniqueIndex("instances_custom_domain_idx").on(table.customDomain),
     index("instances_domain_status_idx").on(table.domainStatus),

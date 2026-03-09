@@ -25,3 +25,9 @@ export const SESSION_COOKIE_NAME = "sparkclaw_session";
 export const INSTANCE_POLL_INTERVAL_MS = 10_000; // 10 seconds
 export const INSTANCE_POLL_MAX_ATTEMPTS = 6; // 60 seconds total
 export const INSTANCE_PROVISION_MAX_RETRIES = 3;
+
+export const PLAN_INSTANCE_LIMITS: Record<Plan, number> = {
+  starter: 1,
+  pro: 3,
+  scale: 10,
+};

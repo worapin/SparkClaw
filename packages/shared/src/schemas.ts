@@ -19,6 +19,10 @@ export const createCheckoutSchema = z.object({
   plan: planSchema,
 });
 
+export const createInstanceSchema = z.object({
+  instanceName: z.string().max(100).optional(),
+});
+
 // ─── Setup Wizard schemas ─────────────────────────────────────────────────────
 
 export const channelTypeSchema = z.enum([
@@ -66,6 +70,7 @@ export const channelConfigSchema = z.object({
 });
 
 export const saveSetupSchema = z.object({
+  instanceId: z.string().uuid(),
   instanceName: z.string().max(100).optional(),
   timezone: z.string().max(50).optional(),
   channels: z.array(channelConfigSchema).min(1, "Select at least one channel"),
@@ -74,6 +79,7 @@ export const saveSetupSchema = z.object({
 });
 
 export const saveChannelCredentialsSchema = z.object({
+  instanceId: z.string().uuid(),
   type: channelTypeSchema,
   credentials: z.record(z.string()),
 });
@@ -84,3 +90,4 @@ export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type CreateCheckoutInput = z.infer<typeof createCheckoutSchema>;
 export type SaveSetupInput = z.infer<typeof saveSetupSchema>;
 export type SaveChannelCredentialsInput = z.infer<typeof saveChannelCredentialsSchema>;
+export type CreateInstanceInput = z.infer<typeof createInstanceSchema>;

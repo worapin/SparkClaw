@@ -45,11 +45,14 @@ export interface MeResponse {
     status: SubscriptionStatus;
     currentPeriodEnd: string | null;
   } | null;
+  instanceLimit: number;
+  instanceCount: number;
   createdAt: string;
 }
 
 export interface InstanceResponse {
   id: string;
+  instanceName: string | null;
   status: InstanceStatus;
   url: string | null;
   customDomain: string | null;
