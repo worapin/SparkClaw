@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { goto } from "$app/navigation";
   import { page } from "$app/state";
   import {
@@ -20,6 +20,11 @@
     updateCustomSkill,
     deleteCustomSkill,
     executeCustomSkill,
+    getInstanceOpsCosts,
+    getInstanceOpsCostTrends,
+    getInstanceOpsHealth,
+    getInstanceOpsSecurity,
+    getInstanceOpsMemory,
   } from "$lib/api";
   import type {
     InstanceResponse,
@@ -38,7 +43,7 @@
   let instance = $state<InstanceResponse | null>(null);
   let loading = $state(true);
   let error = $state("");
-  let activeTab = $state<"controls" | "logs" | "envvars" | "jobs" | "skills">("controls");
+  let activeTab = $state<"controls" | "logs" | "envvars" | "jobs" | "skills" | "agentops">("controls");
 
   // ── Instance Controls ───────────────────────────────────────────────────────
   let actionInProgress = $state("");
@@ -114,6 +119,22 @@
   let executingSkillId = $state<string | null>(null);
   let skillExecutionResult = $state<SkillExecutionResult | null>(null);
   let showExecutionResult = $state(false);
+
+  // ── Agent Ops state
+  let opsSubTab = $state("costs");
+  let opsPeriod = $state("24h");
+  let opsCosts: any = $state(null);
+  let opsCostTrends: any = $state(null);
+  let opsHealth: any = $state(null);
+  let opsSecurity: any = $state(null);
+  let opsMemory: any = $state(null);
+  let opsLoading = $state(false);
+  let opsHealthTimer: ReturnType<typeof setInterval> | undefined;
+
+  // Clean up health timer on component destroy
+  onDestroy(() => {
+    clearInterval(opsHealthTimer);
+  });
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
   onMount(() => {
@@ -550,6 +571,68 @@
     }
   }
 
+  // ── Agent Ops data loading ──────────────────────────────────────────────────
+  async function loadOpsCosts() {
+    opsLoading = true;
+    try {
+      const [costs, trends] = await Promise.all([
+        getInstanceOpsCosts(instanceId, opsPeriod),
+        getInstanceOpsCostTrends(instanceId, opsPeriod),
+      ]);
+      opsCosts = costs;
+      opsCostTrends = trends;
+    } catch (err) {
+      opsCosts = { available: false };
+      opsCostTrends = { available: false };
+    } finally {
+      opsLoading = false;
+    }
+  }
+
+  async function loadOpsHealth() {
+    opsLoading = true;
+    try {
+      opsHealth = await getInstanceOpsHealth(instanceId);
+    } catch {
+      opsHealth = { available: false };
+    } finally {
+      opsLoading = false;
+    }
+  }
+
+  async function loadOpsSecurity() {
+    opsLoading = true;
+    try {
+      opsSecurity = await getInstanceOpsSecurity(instanceId);
+    } catch {
+      opsSecurity = { available: false };
+    } finally {
+      opsLoading = false;
+    }
+  }
+
+  async function loadOpsMemory() {
+    opsLoading = true;
+    try {
+      opsMemory = await getInstanceOpsMemory(instanceId);
+    } catch {
+      opsMemory = { available: false };
+    } finally {
+      opsLoading = false;
+    }
+  }
+
+  function loadOpsSubTab(sub: string) {
+    opsSubTab = sub;
+    clearInterval(opsHealthTimer);
+    if (sub === "costs") loadOpsCosts();
+    else if (sub === "health") {
+      loadOpsHealth();
+      opsHealthTimer = setInterval(loadOpsHealth, 30_000);
+    } else if (sub === "security") loadOpsSecurity();
+    else if (sub === "memory") loadOpsMemory();
+  }
+
   // ── Tab switching with lazy data loading ────────────────────────────────────
   function switchTab(tab: typeof activeTab) {
     activeTab = tab;
@@ -561,6 +644,11 @@
     if (tab === "envvars" && envVars.length === 0) loadEnvVars();
     if (tab === "jobs" && jobs.length === 0) loadJobs();
     if (tab === "skills" && skills.length === 0) loadSkills();
+    if (tab === "agentops") {
+      loadOpsSubTab(opsSubTab);
+    } else {
+      clearInterval(opsHealthTimer);
+    }
   }
 
   // ── Log level colors ────────────────────────────────────────────────────────
@@ -662,6 +750,7 @@
             { id: "envvars", label: "Env Vars" },
             { id: "jobs", label: "Jobs" },
             { id: "skills", label: "Skills" },
+            { id: "agentops", label: "Agent Ops" },
           ] as tab (tab.id)}
             <button
               onclick={() => switchTab(tab.id as typeof activeTab)}
@@ -1387,6 +1476,242 @@
               </div>
             </div>
           {/if}
+
+        {:else if activeTab === "agentops"}
+          <!-- Agent Ops Sub-tabs -->
+          <div class="flex gap-1 bg-warm-50 rounded-lg p-1 mb-6">
+            {#each [
+              { id: "costs", label: "Costs" },
+              { id: "health", label: "Health" },
+              { id: "security", label: "Security" },
+              { id: "memory", label: "Memory" },
+            ] as sub (sub.id)}
+              <button
+                onclick={() => loadOpsSubTab(sub.id)}
+                class="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors {opsSubTab === sub.id ? 'bg-white text-warm-900 shadow-sm' : 'text-warm-500 hover:text-warm-700'}"
+              >
+                {sub.label}
+              </button>
+            {/each}
+          </div>
+
+          {#if opsLoading}
+            <div class="flex items-center justify-center py-12">
+              <div class="w-6 h-6 border-2 border-warm-200 border-t-terra-500 rounded-full animate-spin"></div>
+            </div>
+
+          {:else if opsSubTab === "costs"}
+            {#if opsCosts && opsCosts.available}
+              <div class="flex justify-end mb-4">
+                <div class="flex gap-1 bg-warm-100 rounded-lg p-1">
+                  {#each ["24h", "7d", "30d"] as p}
+                    <button
+                      onclick={() => { opsPeriod = p; loadOpsCosts(); }}
+                      class="px-3 py-1 rounded-md text-xs font-medium transition-colors {opsPeriod === p ? 'bg-white text-warm-900 shadow-sm' : 'text-warm-500 hover:text-warm-700'}"
+                    >
+                      {p}
+                    </button>
+                  {/each}
+                </div>
+              </div>
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl border border-warm-200 p-4">
+                  <p class="text-xs text-warm-500 mb-1">Total Tokens</p>
+                  <p class="text-xl font-bold text-warm-900">{opsCosts.totalTokens?.toLocaleString()}</p>
+                </div>
+                <div class="bg-white rounded-xl border border-warm-200 p-4">
+                  <p class="text-xs text-warm-500 mb-1">Total Cost</p>
+                  <p class="text-xl font-bold text-warm-900">${opsCosts.totalCost?.toFixed(4)}</p>
+                </div>
+                <div class="bg-white rounded-xl border border-warm-200 p-4">
+                  <p class="text-xs text-warm-500 mb-1">Requests</p>
+                  <p class="text-xl font-bold text-warm-900">{opsCosts.requestCount?.toLocaleString()}</p>
+                </div>
+                <div class="bg-white rounded-xl border border-warm-200 p-4">
+                  <p class="text-xs text-warm-500 mb-1">Avg Cost/Request</p>
+                  <p class="text-xl font-bold text-warm-900">${opsCosts.avgCostPerRequest?.toFixed(6)}</p>
+                </div>
+              </div>
+              {#if opsCosts.byModel?.length > 0}
+                <div class="bg-white rounded-xl border border-warm-200 overflow-hidden">
+                  <table class="w-full">
+                    <thead>
+                      <tr class="border-b border-warm-200 bg-warm-50">
+                        <th class="text-left text-xs font-semibold text-warm-500 px-4 py-3">Model</th>
+                        <th class="text-right text-xs font-semibold text-warm-500 px-4 py-3">Tokens</th>
+                        <th class="text-right text-xs font-semibold text-warm-500 px-4 py-3">Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each opsCosts.byModel as model}
+                        <tr class="border-b border-warm-100 last:border-0">
+                          <td class="px-4 py-3 text-sm text-warm-900">{model.model}</td>
+                          <td class="px-4 py-3 text-sm text-warm-700 text-right">{model.tokens?.toLocaleString()}</td>
+                          <td class="px-4 py-3 text-sm text-warm-700 text-right">${model.cost?.toFixed(4)}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </div>
+              {/if}
+              {#if opsCostTrends && opsCostTrends.available && opsCostTrends.hourly?.length > 0}
+                {@const maxTokens = Math.max(...opsCostTrends.hourly.map((h: any) => h.tokens)) || 1}
+                <div class="mt-6 bg-white rounded-xl border border-warm-200 p-4">
+                  <h3 class="text-sm font-semibold text-warm-700 mb-3">Token Usage Trend</h3>
+                  <div class="flex items-end gap-1 h-32">
+                    {#each opsCostTrends.hourly as point}
+                      <div
+                        class="flex-1 bg-terra-500 rounded-t opacity-80 hover:opacity-100 transition-opacity"
+                        style="height: {Math.max((point.tokens / maxTokens) * 100, 2)}%"
+                        title="{point.time}: {point.tokens?.toLocaleString()} tokens"
+                      ></div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+            {:else}
+              <div class="text-center py-12 text-warm-400">
+                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <p class="text-sm">Agent Ops is being set up</p>
+              </div>
+            {/if}
+
+          {:else if opsSubTab === "health"}
+            {#if opsHealth && opsHealth.available}
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-semibold text-warm-700">Agent Status</h3>
+                <span class="text-xs text-warm-400">Auto-refresh 30s</span>
+              </div>
+              {#if opsHealth.agents?.length > 0}
+                <div class="space-y-3">
+                  {#each opsHealth.agents as agent}
+                    <div class="bg-white rounded-xl border border-warm-200 p-4">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                          <span class="w-2.5 h-2.5 rounded-full {agent.status === 'active' ? 'bg-green-500' : agent.status === 'idle' ? 'bg-yellow-500' : agent.status === 'error' ? 'bg-red-500' : 'bg-warm-300'}"></span>
+                          <span class="text-sm font-semibold text-warm-900">{agent.name}</span>
+                        </div>
+                        <span class="text-xs px-2 py-1 rounded-full font-medium {agent.status === 'active' ? 'bg-green-100 text-green-700' : agent.status === 'idle' ? 'bg-yellow-100 text-yellow-700' : agent.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-warm-100 text-warm-500'}">{agent.status}</span>
+                      </div>
+                      {#if agent.lastSeen}
+                        <p class="text-xs text-warm-400 mb-2">Last seen: {new Date(agent.lastSeen).toLocaleString()}</p>
+                      {/if}
+                      <div class="grid grid-cols-4 gap-2 text-center">
+                        <div class="bg-warm-50 rounded-lg p-2"><p class="text-xs text-warm-400">Total</p><p class="text-sm font-bold">{agent.taskStats?.total}</p></div>
+                        <div class="bg-warm-50 rounded-lg p-2"><p class="text-xs text-warm-400">Assigned</p><p class="text-sm font-bold">{agent.taskStats?.assigned}</p></div>
+                        <div class="bg-warm-50 rounded-lg p-2"><p class="text-xs text-warm-400">In Progress</p><p class="text-sm font-bold">{agent.taskStats?.inProgress}</p></div>
+                        <div class="bg-warm-50 rounded-lg p-2"><p class="text-xs text-warm-400">Done</p><p class="text-sm font-bold">{agent.taskStats?.done}</p></div>
+                      </div>
+                    </div>
+                  {/each}
+                </div>
+              {:else}
+                <p class="text-center py-8 text-sm text-warm-400">No agents registered yet</p>
+              {/if}
+            {:else}
+              <div class="text-center py-12 text-warm-400">
+                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                <p class="text-sm">Agent Ops is being set up</p>
+              </div>
+            {/if}
+
+          {:else if opsSubTab === "security"}
+            {#if opsSecurity && opsSecurity.available}
+              <div class="flex items-center gap-6 mb-6">
+                <div class="relative w-24 h-24">
+                  <svg class="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e0db" stroke-width="8" />
+                    <circle cx="50" cy="50" r="45" fill="none" stroke="{opsSecurity.level === 'hardened' ? '#16a34a' : opsSecurity.level === 'secure' ? '#2563eb' : opsSecurity.level === 'needs-attention' ? '#d97706' : '#dc2626'}" stroke-width="8" stroke-dasharray="{opsSecurity.postureScore * 2.83} 283" stroke-linecap="round" />
+                  </svg>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-2xl font-bold text-warm-900">{opsSecurity.postureScore}</span>
+                  </div>
+                </div>
+                <div>
+                  <p class="text-lg font-semibold text-warm-900 capitalize">{opsSecurity.level?.replace('-', ' ')}</p>
+                  <p class="text-sm text-warm-500">Security Posture Score</p>
+                </div>
+              </div>
+              {#if opsSecurity.trustScores?.length > 0}
+                <div class="bg-white rounded-xl border border-warm-200 p-4 mb-4">
+                  <h3 class="text-sm font-semibold text-warm-700 mb-3">Agent Trust Scores</h3>
+                  <div class="space-y-2">
+                    {#each opsSecurity.trustScores as ts}
+                      <div class="flex items-center justify-between">
+                        <span class="text-sm text-warm-700">{ts.agentName}</span>
+                        <div class="flex items-center gap-2">
+                          <div class="w-24 h-2 bg-warm-100 rounded-full overflow-hidden">
+                            <div class="h-full rounded-full {ts.score >= 70 ? 'bg-green-500' : ts.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'}" style="width: {ts.score}%"></div>
+                          </div>
+                          <span class="text-xs font-medium text-warm-600 w-8 text-right">{ts.score}</span>
+                        </div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+              {/if}
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white rounded-xl border border-warm-200 p-4">
+                  <p class="text-xs text-warm-500 mb-1">Secret Exposures</p>
+                  <p class="text-2xl font-bold {opsSecurity.secretExposures?.count > 0 ? 'text-red-600' : 'text-green-600'}">{opsSecurity.secretExposures?.count}</p>
+                </div>
+                <div class="bg-white rounded-xl border border-warm-200 p-4">
+                  <p class="text-xs text-warm-500 mb-1">Injection Attempts</p>
+                  <p class="text-2xl font-bold {opsSecurity.injectionAttempts?.count > 0 ? 'text-red-600' : 'text-green-600'}">{opsSecurity.injectionAttempts?.count}</p>
+                </div>
+              </div>
+            {:else}
+              <div class="text-center py-12 text-warm-400">
+                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                <p class="text-sm">Agent Ops is being set up</p>
+              </div>
+            {/if}
+
+          {:else if opsSubTab === "memory"}
+            {#if opsMemory && opsMemory.available}
+              {#if opsMemory.files?.length > 0}
+                <div class="bg-white rounded-xl border border-warm-200 overflow-hidden">
+                  <div class="px-4 py-3 border-b border-warm-200 bg-warm-50">
+                    <h3 class="text-sm font-semibold text-warm-700">Memory Files ({opsMemory.files.length})</h3>
+                  </div>
+                  <div class="divide-y divide-warm-100">
+                    {#each opsMemory.files as file}
+                      <div class="px-4 py-3 flex items-center justify-between">
+                        <div><p class="text-sm font-medium text-warm-900">{file.name}</p><p class="text-xs text-warm-400">{file.path}</p></div>
+                        <div class="text-right"><p class="text-xs text-warm-500">{(file.size / 1024).toFixed(1)} KB</p><p class="text-xs text-warm-400">{new Date(file.lastModified).toLocaleDateString()}</p></div>
+                      </div>
+                    {/each}
+                  </div>
+                </div>
+                {#if opsMemory.relationships?.length > 0}
+                  <div class="mt-4 bg-white rounded-xl border border-warm-200 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-warm-200 bg-warm-50">
+                      <h3 class="text-sm font-semibold text-warm-700">Relationships ({opsMemory.relationships.length})</h3>
+                    </div>
+                    <div class="divide-y divide-warm-100">
+                      {#each opsMemory.relationships as rel}
+                        <div class="px-4 py-3 flex items-center gap-2 text-sm">
+                          <span class="text-warm-700">{rel.source}</span>
+                          <span class="text-warm-400">&rarr;</span>
+                          <span class="px-2 py-0.5 bg-warm-100 rounded text-xs text-warm-500">{rel.type}</span>
+                          <span class="text-warm-400">&rarr;</span>
+                          <span class="text-warm-700">{rel.target}</span>
+                        </div>
+                      {/each}
+                    </div>
+                  </div>
+                {/if}
+              {:else}
+                <p class="text-center py-8 text-sm text-warm-400">No memory files yet</p>
+              {/if}
+            {:else}
+              <div class="text-center py-12 text-warm-400">
+                <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" /></svg>
+                <p class="text-sm">Agent Ops is being set up</p>
+              </div>
+            {/if}
+          {/if}
+
         {/if}
       {/if}
     </div>
