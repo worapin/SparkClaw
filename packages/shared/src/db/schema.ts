@@ -506,7 +506,7 @@ export const customSkills = pgTable(
     language: varchar("language", { length: 10 }).notNull(), // "python" | "typescript"
     code: text("code").notNull(),
     enabled: boolean("enabled").notNull().default(true),
-    triggerType: varchar("trigger_type", { length: 20 }).notNull().default("command"), // command | event | schedule
+    triggerType: varchar("trigger_type", { length: 20 }).notNull().default("manual"), // manual | cron | event | webhook
     triggerValue: varchar("trigger_value", { length: 100 }), // command name, event name, or cron
     timeout: integer("timeout").notNull().default(30), // seconds
     lastRunAt: timestamp("last_run_at", { withTimezone: true }),

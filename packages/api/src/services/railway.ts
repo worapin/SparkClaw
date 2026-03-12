@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import { getEnv } from "@sparkclaw/shared";
 import { configureOpenClaw } from "./openclaw.js";
-import { sendInstanceReadyEmail } from "./email.js";
+import { sendErrorEmail, sendInstanceReadyEmail } from "./email.js";
 
 const RAILWAY_API_URL = "https://backboard.railway.app/graphql/v2";
 
@@ -464,12 +464,10 @@ export async function provisionInstance(
 
   // Send error email
   if (user?.email) {
-    await sendInstanceReadyEmail({
-      email: user.email,
-      instanceUrl: "",
-      customDomain: "",
-      plan: subscription?.plan ?? "unknown",
-    });
+    await sendErrorEmail(
+      user.email,
+      lastError?.message ?? "Unknown provisioning error",
+    );
   }
 
   logger.error("Instance provisioning failed after all retries", { instanceId: instance.id });

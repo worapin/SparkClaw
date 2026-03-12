@@ -34,7 +34,7 @@
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
   // ── Core state ──────────────────────────────────────────────────────────────
-  let instanceId = $derived(page.params.id);
+  let instanceId = $derived(page.params.id ?? "");
   let instance = $state<InstanceResponse | null>(null);
   let loading = $state(true);
   let error = $state("");
@@ -128,6 +128,11 @@
   async function loadInstance() {
     loading = true;
     error = "";
+    if (!instanceId) {
+      error = "Instance ID is missing.";
+      loading = false;
+      return;
+    }
     try {
       instance = await getInstanceById(instanceId);
       await loadHealth();

@@ -55,7 +55,7 @@ describe("encryptJson / decryptJson", () => {
 
   it("round-trips nested objects and arrays", () => {
     const data = { items: [1, 2, 3], nested: { ok: true } };
-    expect(decryptJson(encryptJson(data))).toEqual(data);
+    expect(decryptJson<typeof data>(encryptJson(data))).toEqual(data);
   });
 });
 

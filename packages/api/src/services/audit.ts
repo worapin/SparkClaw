@@ -21,11 +21,19 @@ export type AuditAction =
   | "scheduled_job_created"
   | "scheduled_job_updated"
   | "scheduled_job_deleted"
+  | "env_var_created"
+  | "env_var_updated"
+  | "env_var_deleted"
+  | "skill_created"
+  | "skill_updated"
+  | "skill_deleted"
+  | "skill_executed"
   | "subscription_canceled"
   | "account_deleted"
   | "instance_start"
   | "instance_stop"
-  | "instance_restart";
+  | "instance_restart"
+  | "org_deleted";
 
 export async function logAudit(params: {
   userId: string;

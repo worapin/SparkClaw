@@ -196,7 +196,7 @@ export async function getOrgs() {
 }
 
 export async function createOrg(name: string) {
-  return request<{ org: OrgResponse }>("/api/orgs", { method: "POST", body: JSON.stringify({ name }) });
+  return request<OrgResponse>("/api/orgs", { method: "POST", body: JSON.stringify({ name }) });
 }
 
 export async function getOrgMembers(orgId: string) {

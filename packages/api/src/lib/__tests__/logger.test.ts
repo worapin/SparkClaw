@@ -1,5 +1,6 @@
 import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { logger } from "../logger.js";
+import { validateEnv } from "@sparkclaw/shared";
 
 describe("logger", () => {
   let logSpy: ReturnType<typeof mock>;
@@ -7,6 +8,10 @@ describe("logger", () => {
   let errorSpy: ReturnType<typeof mock>;
 
   beforeEach(() => {
+    process.env.NODE_ENV = "test";
+    process.env.WEB_URL = "http://localhost:5173";
+    validateEnv();
+
     logSpy = mock(() => {});
     warnSpy = mock(() => {});
     errorSpy = mock(() => {});

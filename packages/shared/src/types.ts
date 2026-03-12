@@ -72,7 +72,7 @@ export type ApiKeyScope = "instance:read" | "instance:write" | "setup:read" | "s
 export type UsageType = "llm_tokens" | "messages" | "file_storage" | "api_calls";
 export type ScheduledTaskType = "backup" | "report" | "data_sync" | "webhook";
 export type SkillLanguage = "python" | "typescript";
-export type SkillTriggerType = "command" | "event" | "schedule";
+export type SkillTriggerType = "manual" | "cron" | "event" | "webhook";
 export type SkillRunStatus = "success" | "error" | "timeout";
 export type InstanceAction = "start" | "stop" | "restart";
 

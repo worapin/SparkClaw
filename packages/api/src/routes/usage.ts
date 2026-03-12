@@ -67,8 +67,13 @@ export const usageRoutes = new Elysia({ prefix: "/api/usage" })
     }
   })
   // ── GET /api/usage ──────────────────────────────────────────────────────────
-  .get("/", async ({ user }) => {
-    const period = getCurrentPeriod();
+  .get("/", async ({ user, query, set }) => {
+    const requestedPeriod = query.period as string | undefined;
+    if (requestedPeriod && !/^\d{4}-\d{2}$/.test(requestedPeriod)) {
+      set.status = 400;
+      return { error: "Invalid period format. Use YYYY-MM" };
+    }
+    const period = requestedPeriod ?? getCurrentPeriod();
 
     const records = await db.query.usageRecords.findMany({
       where: and(

@@ -7,39 +7,62 @@ import { logAudit } from "../services/audit.js";
 import { db, instances, customSkills } from "@sparkclaw/shared/db";
 import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
+import { getEnv } from "@sparkclaw/shared";
 
-// Execute skill in sandboxed subprocess
-async function executeSkill(language: string, code: string, timeout: number): Promise<{ success: boolean; output: string; error: string | null; duration: number }> {
+export interface SkillExecutionResult {
+  success: boolean;
+  output: string;
+  error: string | null;
+  duration: number;
+}
+
+function normalizeTriggerType(value: string): "manual" | "cron" | "event" | "webhook" {
+  if (value === "command") return "manual";
+  if (value === "schedule") return "cron";
+  if (value === "manual" || value === "cron" || value === "event" || value === "webhook") return value;
+  return "manual";
+}
+
+// Execute skill using an isolated external runner (never on the API host)
+async function executeSkill(language: string, code: string, timeout: number): Promise<SkillExecutionResult> {
+  const env = getEnv();
+  if (!env.SKILL_RUNNER_URL) {
+    return {
+      success: false,
+      output: "",
+      error: "Skill execution is disabled until SKILL_RUNNER_URL is configured.",
+      duration: 0,
+    };
+  }
+
   const start = Date.now();
   try {
-    let proc;
-    if (language === "typescript") {
-      proc = Bun.spawn(["bun", "eval", code], {
-        stdout: "pipe", stderr: "pipe",
-        env: { ...process.env, NODE_ENV: "sandbox" },
-      });
-    } else {
-      proc = Bun.spawn(["python3", "-c", code], {
-        stdout: "pipe", stderr: "pipe",
-        env: { PATH: process.env.PATH },
-      });
-    }
+    const response = await fetch(`${env.SKILL_RUNNER_URL}/execute`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(env.SKILL_RUNNER_TOKEN
+          ? { Authorization: `Bearer ${env.SKILL_RUNNER_TOKEN}` }
+          : {}),
+      },
+      body: JSON.stringify({ language, code, timeout }),
+      signal: AbortSignal.timeout((timeout + 5) * 1000),
+    });
 
-    const timeoutId = setTimeout(() => proc.kill(), timeout * 1000);
-
-    const [stdout, stderr] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ]);
-
-    clearTimeout(timeoutId);
-    const exitCode = proc.exitCode ?? (await proc.exited);
     const duration = Date.now() - start;
-
-    if (exitCode !== 0) {
-      return { success: false, output: stdout, error: stderr || `Exit code: ${exitCode}`, duration };
+    if (!response.ok) {
+      const message = await response.text().catch(() => `HTTP ${response.status}`);
+      return { success: false, output: "", error: message, duration };
     }
-    return { success: true, output: stdout, error: null, duration };
+
+    const result = (await response.json()) as Partial<SkillExecutionResult>;
+
+    return {
+      success: result.success === true,
+      output: typeof result.output === "string" ? result.output : "",
+      error: typeof result.error === "string" ? result.error : null,
+      duration: typeof result.duration === "number" ? result.duration : duration,
+    };
   } catch (e) {
     return { success: false, output: "", error: (e as Error).message, duration: Date.now() - start };
   }
@@ -78,7 +101,7 @@ export const customSkillsRoutes = new Elysia({ prefix: "/api/skills" })
         language: s.language,
         code: s.code,
         enabled: s.enabled,
-        triggerType: s.triggerType,
+        triggerType: normalizeTriggerType(s.triggerType),
         triggerValue: s.triggerValue,
         timeout: s.timeout,
         lastRunAt: s.lastRunAt?.toISOString() ?? null,
@@ -109,7 +132,7 @@ export const customSkillsRoutes = new Elysia({ prefix: "/api/skills" })
       timeout: parsed.data.timeout,
     }).returning();
 
-    logAudit({ userId: user.id, action: "skill_created" as any, instanceId: parsed.data.instanceId, metadata: { name: parsed.data.name } });
+    logAudit({ userId: user.id, action: "skill_created", instanceId: parsed.data.instanceId, metadata: { name: parsed.data.name } });
     return { success: true, id: created.id };
   })
   // PATCH /api/skills/:id
@@ -127,7 +150,7 @@ export const customSkillsRoutes = new Elysia({ prefix: "/api/skills" })
 
     await db.update(customSkills).set({ ...parsed.data, updatedAt: new Date() }).where(eq(customSkills.id, params.id));
 
-    logAudit({ userId: user.id, action: "skill_updated" as any, instanceId: skill.instanceId, metadata: { name: skill.name } });
+    logAudit({ userId: user.id, action: "skill_updated", instanceId: skill.instanceId, metadata: { name: skill.name } });
     return { success: true };
   })
   // DELETE /api/skills/:id
@@ -142,7 +165,7 @@ export const customSkillsRoutes = new Elysia({ prefix: "/api/skills" })
 
     await db.delete(customSkills).where(eq(customSkills.id, params.id));
 
-    logAudit({ userId: user.id, action: "skill_deleted" as any, instanceId: skill.instanceId, metadata: { name: skill.name } });
+    logAudit({ userId: user.id, action: "skill_deleted", instanceId: skill.instanceId, metadata: { name: skill.name } });
     return { success: true };
   })
   // POST /api/skills/:id/execute - run skill in sandbox
@@ -167,6 +190,6 @@ export const customSkillsRoutes = new Elysia({ prefix: "/api/skills" })
       updatedAt: new Date(),
     }).where(eq(customSkills.id, params.id));
 
-    logAudit({ userId: user.id, action: "skill_executed" as any, instanceId: skill.instanceId, metadata: { name: skill.name, success: result.success } });
+    logAudit({ userId: user.id, action: "skill_executed", instanceId: skill.instanceId, metadata: { name: skill.name, success: result.success } });
     return result;
   });

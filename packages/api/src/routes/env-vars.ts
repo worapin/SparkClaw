@@ -62,7 +62,7 @@ export const envVarsRoutes = new Elysia({ prefix: "/api/env-vars" })
       isSecret: parsed.data.isSecret,
     }).returning();
 
-    logAudit({ userId: user.id, action: "env_var_created" as any, instanceId: parsed.data.instanceId, metadata: { key: parsed.data.key } });
+    logAudit({ userId: user.id, action: "env_var_created", instanceId: parsed.data.instanceId, metadata: { key: parsed.data.key } });
 
     return { success: true, id: created.id };
   })
@@ -82,7 +82,7 @@ export const envVarsRoutes = new Elysia({ prefix: "/api/env-vars" })
     const encrypted = encrypt(parsed.data.value);
     await db.update(envVars).set({ encryptedValue: encrypted, updatedAt: new Date() }).where(eq(envVars.id, params.id));
 
-    logAudit({ userId: user.id, action: "env_var_updated" as any, instanceId: envVar.instanceId, metadata: { key: envVar.key } });
+    logAudit({ userId: user.id, action: "env_var_updated", instanceId: envVar.instanceId, metadata: { key: envVar.key } });
     return { success: true };
   })
   // DELETE /api/env-vars/:id
@@ -97,6 +97,6 @@ export const envVarsRoutes = new Elysia({ prefix: "/api/env-vars" })
 
     await db.delete(envVars).where(eq(envVars.id, params.id));
 
-    logAudit({ userId: user.id, action: "env_var_deleted" as any, instanceId: envVar.instanceId, metadata: { key: envVar.key } });
+    logAudit({ userId: user.id, action: "env_var_deleted", instanceId: envVar.instanceId, metadata: { key: envVar.key } });
     return { success: true };
   });

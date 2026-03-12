@@ -57,6 +57,8 @@ mock.module("../../lib/logger.js", () => ({
 
 // Mock email service
 mock.module("../../services/email.js", () => ({
+  sendInstanceReadyEmail: mock(() => Promise.resolve(true)),
+  sendErrorEmail: mock(() => Promise.resolve(true)),
   sendPaymentFailedEmail: mock(() => Promise.resolve(true)),
   sendSubscriptionCanceledEmail: mock(() => Promise.resolve(true)),
 }));
@@ -97,6 +99,7 @@ beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = "sk_test_fake";
   process.env.STRIPE_WEBHOOK_SECRET = "whsec_fake";
   process.env.WEB_URL = "http://localhost:5173";
+  process.env.REDIS_URL = "redis://localhost:6379";
 
   // Reset call counts
   mockReturning.mockClear();
@@ -124,7 +127,10 @@ describe("handleCheckoutCompleted", () => {
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockInsertValues).toHaveBeenCalledTimes(1);
 
-    const insertedValues = mockInsertValues.mock.calls[0][0];
+    const firstInsertCall = mockInsertValues.mock.calls.at(0) as unknown[] | undefined;
+    const insertedValues = firstInsertCall?.[0] as Record<string, unknown> | undefined;
+    expect(insertedValues).toBeDefined();
+    if (!insertedValues) throw new Error("Expected inserted values to be present");
     expect(insertedValues.userId).toBe("u_1");
     expect(insertedValues.plan).toBe("pro");
     expect(insertedValues.stripeCustomerId).toBe("cus_123");
@@ -173,7 +179,10 @@ describe("handleSubscriptionUpdated", () => {
     expect(mockUpdate).toHaveBeenCalledTimes(1);
     expect(mockUpdateSet).toHaveBeenCalledTimes(1);
 
-    const setArg = mockUpdateSet.mock.calls[0][0];
+    const firstUpdateCall = mockUpdateSet.mock.calls.at(0) as unknown[] | undefined;
+    const setArg = firstUpdateCall?.[0] as Record<string, unknown> | undefined;
+    expect(setArg).toBeDefined();
+    if (!setArg) throw new Error("Expected update payload to be present");
     expect(setArg.status).toBe("active");
     expect(setArg.currentPeriodEnd).toBeInstanceOf(Date);
   });
@@ -187,7 +196,10 @@ describe("handleSubscriptionUpdated", () => {
 
     await handleSubscriptionUpdated(sub);
 
-    const setArg = mockUpdateSet.mock.calls[0][0];
+    const firstUpdateCall = mockUpdateSet.mock.calls.at(0) as unknown[] | undefined;
+    const setArg = firstUpdateCall?.[0] as Record<string, unknown> | undefined;
+    expect(setArg).toBeDefined();
+    if (!setArg) throw new Error("Expected update payload to be present");
     expect(setArg.status).toBe("past_due");
   });
 });
@@ -200,7 +212,10 @@ describe("handleSubscriptionDeleted", () => {
 
     // First update call: set subscription status to canceled
     expect(mockUpdate).toHaveBeenCalled();
-    const firstSetArg = mockUpdateSet.mock.calls[0][0];
+    const firstUpdateCall = mockUpdateSet.mock.calls.at(0) as unknown[] | undefined;
+    const firstSetArg = firstUpdateCall?.[0] as Record<string, unknown> | undefined;
+    expect(firstSetArg).toBeDefined();
+    if (!firstSetArg) throw new Error("Expected first update payload to be present");
     expect(firstSetArg.status).toBe("canceled");
   });
 
@@ -214,12 +229,15 @@ describe("handleSubscriptionDeleted", () => {
 
     // Second update call: set instance status to suspended
     expect(mockUpdate).toHaveBeenCalledTimes(2);
-    const secondSetArg = mockUpdateSet.mock.calls[1][0];
+    const secondUpdateCall = mockUpdateSet.mock.calls.at(1) as unknown[] | undefined;
+    const secondSetArg = secondUpdateCall?.[0] as Record<string, unknown> | undefined;
+    expect(secondSetArg).toBeDefined();
+    if (!secondSetArg) throw new Error("Expected second update payload to be present");
     expect(secondSetArg.status).toBe("suspended");
   });
 
   it("does not update instances when subscription is not found", async () => {
-    mockQueryFindFirst.mockImplementationOnce(() => Promise.resolve(undefined));
+    mockQueryFindFirst.mockImplementationOnce(() => Promise.resolve(undefined as any));
 
     const sub = { id: "sub_stripe_missing" } as unknown as Stripe.Subscription;
     await handleSubscriptionDeleted(sub);

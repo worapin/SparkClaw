@@ -248,6 +248,11 @@ export const orgRoutes = new Elysia({ prefix: "/api/orgs" })
       return { error: "Invite has expired" };
     }
 
+    if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
+      set.status = 403;
+      return { error: "This invite is not for your account email" };
+    }
+
     // Check if already a member
     const existingMember = await db.query.orgMembers.findFirst({
       where: and(
@@ -382,8 +387,8 @@ export const orgRoutes = new Elysia({ prefix: "/api/orgs" })
 
     await logAudit({
       userId: user.id,
-      action: "org_member_removed",
-      metadata: { orgId: params.id, action: "org_deleted", name: org.name },
+      action: "org_deleted",
+      metadata: { orgId: params.id, name: org.name },
     });
 
     logger.info("Organization deleted", { userId: user.id, orgId: params.id });

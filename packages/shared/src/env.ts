@@ -31,6 +31,8 @@ const envSchema = z.object({
   OPENCLAW_GITHUB_REPO: z.string().default("sparkclaw/openclaw-template"),
   PRISM_BASE_URL: z.string().url().optional(),
   PRISM_API_KEY: z.string().optional(),
+  SKILL_RUNNER_URL: z.string().url().optional(),
+  SKILL_RUNNER_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

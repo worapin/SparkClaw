@@ -178,7 +178,7 @@ export const updateEnvVarSchema = z.object({
 // ─── Custom Skill schemas ───────────────────────────────────────────────────
 
 export const skillLanguageSchema = z.enum(["python", "typescript"]);
-export const skillTriggerTypeSchema = z.enum(["command", "event", "schedule"]);
+export const skillTriggerTypeSchema = z.enum(["manual", "cron", "event", "webhook"]);
 
 export const createCustomSkillSchema = z.object({
   instanceId: z.string().uuid(),
@@ -186,7 +186,7 @@ export const createCustomSkillSchema = z.object({
   description: z.string().max(500).optional(),
   language: skillLanguageSchema,
   code: z.string().min(1).max(50000),
-  triggerType: skillTriggerTypeSchema.default("command"),
+  triggerType: skillTriggerTypeSchema.default("manual"),
   triggerValue: z.string().max(100).optional(),
   timeout: z.number().min(1).max(300).default(30),
 });
