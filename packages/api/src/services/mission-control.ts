@@ -1,4 +1,6 @@
 import { getEnv } from "@sparkclaw/shared";
+import { db, instances } from "@sparkclaw/shared/db";
+import { eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger.js";
 import type {
   OpsCostsResponse,
@@ -134,8 +136,9 @@ export async function fetchMCCosts(
 
   const from = periodToFrom(period);
   // NOTE: Verify actual MC query params during integration testing
+  const params = new URLSearchParams({ action: "stats", workspaceId, from });
   const raw = await mcFetch<Record<string, unknown>>(
-    `/api/tokens?action=stats&workspaceId=${workspaceId}&from=${from}`,
+    `/api/tokens?${params}`,
   );
 
   const result: OpsCostsResponse = {
@@ -162,8 +165,9 @@ export async function fetchMCCostTrends(
   if (cached) return cached;
 
   const from = periodToFrom(period);
+  const params = new URLSearchParams({ action: "trends", workspaceId, from });
   const raw = await mcFetch<Record<string, unknown>>(
-    `/api/tokens?action=trends&workspaceId=${workspaceId}&from=${from}`,
+    `/api/tokens?${params}`,
   );
 
   const result: OpsCostTrendsResponse = {
@@ -184,8 +188,9 @@ export async function fetchMCAgentHealth(
   const cached = getCached<OpsHealthResponse>(cacheKey);
   if (cached) return cached;
 
+  const params = new URLSearchParams({ workspaceId });
   const raw = await mcFetch<Record<string, unknown>>(
-    `/api/agents?workspaceId=${workspaceId}`,
+    `/api/agents?${params}`,
   );
 
   const agents = Array.isArray(raw.agents) ? raw.agents : Array.isArray(raw) ? raw : [];
@@ -217,8 +222,9 @@ export async function fetchMCSecurityAudit(
   const cached = getCached<OpsSecurityResponse>(cacheKey);
   if (cached) return cached;
 
+  const params = new URLSearchParams({ workspaceId });
   const raw = await mcFetch<Record<string, unknown>>(
-    `/api/security-audit?workspaceId=${workspaceId}`,
+    `/api/security-audit?${params}`,
   );
 
   const postureScore = raw.postureScore as Record<string, unknown> | undefined;
@@ -255,8 +261,9 @@ export async function fetchMCMemory(
   const cached = getCached<OpsMemoryResponse>(cacheKey);
   if (cached) return cached;
 
+  const params = new URLSearchParams({ workspaceId });
   const raw = await mcFetch<Record<string, unknown>>(
-    `/api/memory?workspaceId=${workspaceId}`,
+    `/api/memory?${params}`,
   );
 
   const result: OpsMemoryResponse = {
@@ -271,4 +278,44 @@ export async function fetchMCMemory(
 
   setCache(cacheKey, result);
   return result;
+}
+
+// ── Provisioning helper (shared by queue.ts and stripe.ts) ────
+
+export async function provisionMCWorkspaceForInstance(
+  userId: string,
+  subscriptionId: string,
+): Promise<void> {
+  if (!isMCConfigured()) return;
+
+  try {
+    const instance = await db.query.instances.findFirst({
+      where: and(
+        eq(instances.userId, userId),
+        eq(instances.subscriptionId, subscriptionId),
+        eq(instances.status, "ready"),
+      ),
+    });
+
+    if (instance && !instance.mcWorkspaceId) {
+      const workspaceId = await createMCWorkspace(
+        instance.id,
+        instance.instanceName || instance.id,
+      );
+      if (workspaceId) {
+        await db
+          .update(instances)
+          .set({ mcWorkspaceId: workspaceId, updatedAt: new Date() })
+          .where(eq(instances.id, instance.id));
+        logger.info("MC workspace created during provisioning", {
+          instanceId: instance.id,
+          workspaceId,
+        });
+      }
+    }
+  } catch (error) {
+    logger.warn("Failed to create MC workspace during provisioning (will lazy-create later)", {
+      error: (error as Error).message,
+    });
+  }
 }

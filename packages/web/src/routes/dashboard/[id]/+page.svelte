@@ -34,6 +34,14 @@
     ScheduledJobResponse,
     CustomSkillResponse,
     SkillExecutionResult,
+    OpsCostsResponse,
+    OpsCostTrendsResponse,
+    OpsHealthResponse,
+    OpsSecurityResponse,
+    OpsMemoryResponse,
+    OpsUnavailableResponse,
+    OpsSubTab,
+    OpsPeriod,
   } from "@sparkclaw/shared/types";
 
   const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
@@ -121,13 +129,13 @@
   let showExecutionResult = $state(false);
 
   // ── Agent Ops state
-  let opsSubTab = $state("costs");
-  let opsPeriod = $state("24h");
-  let opsCosts: any = $state(null);
-  let opsCostTrends: any = $state(null);
-  let opsHealth: any = $state(null);
-  let opsSecurity: any = $state(null);
-  let opsMemory: any = $state(null);
+  let opsSubTab: OpsSubTab = $state("costs");
+  let opsPeriod: OpsPeriod = $state("24h");
+  let opsCosts: OpsCostsResponse | OpsUnavailableResponse | null = $state(null);
+  let opsCostTrends: OpsCostTrendsResponse | OpsUnavailableResponse | null = $state(null);
+  let opsHealth: OpsHealthResponse | OpsUnavailableResponse | null = $state(null);
+  let opsSecurity: OpsSecurityResponse | OpsUnavailableResponse | null = $state(null);
+  let opsMemory: OpsMemoryResponse | OpsUnavailableResponse | null = $state(null);
   let opsLoading = $state(false);
   let opsHealthTimer: ReturnType<typeof setInterval> | undefined;
 
@@ -1654,10 +1662,30 @@
                 <div class="bg-white rounded-xl border border-warm-200 p-4">
                   <p class="text-xs text-warm-500 mb-1">Secret Exposures</p>
                   <p class="text-2xl font-bold {opsSecurity.secretExposures?.count > 0 ? 'text-red-600' : 'text-green-600'}">{opsSecurity.secretExposures?.count}</p>
+                  {#if opsSecurity.secretExposures?.recent?.length > 0}
+                    <ul class="mt-2 space-y-1">
+                      {#each opsSecurity.secretExposures.recent as incident}
+                        <li class="text-xs text-warm-600 flex justify-between">
+                          <span>{incident.type}</span>
+                          <span class="text-warm-400">{new Date(incident.detectedAt).toLocaleDateString()}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
                 </div>
                 <div class="bg-white rounded-xl border border-warm-200 p-4">
                   <p class="text-xs text-warm-500 mb-1">Injection Attempts</p>
                   <p class="text-2xl font-bold {opsSecurity.injectionAttempts?.count > 0 ? 'text-red-600' : 'text-green-600'}">{opsSecurity.injectionAttempts?.count}</p>
+                  {#if opsSecurity.injectionAttempts?.recent?.length > 0}
+                    <ul class="mt-2 space-y-1">
+                      {#each opsSecurity.injectionAttempts.recent as attempt}
+                        <li class="text-xs text-warm-600 flex justify-between">
+                          <span>{attempt.source}</span>
+                          <span class="text-warm-400">{new Date(attempt.detectedAt).toLocaleDateString()}</span>
+                        </li>
+                      {/each}
+                    </ul>
+                  {/if}
                 </div>
               </div>
             {:else}

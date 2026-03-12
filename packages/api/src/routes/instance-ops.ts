@@ -19,6 +19,9 @@ import type { OpsPeriod, OpsUnavailableResponse } from "@sparkclaw/shared/types"
 const UNAVAILABLE: OpsUnavailableResponse = { available: false };
 const VALID_PERIODS = new Set<OpsPeriod>(["24h", "7d", "30d"]);
 
+// In-flight lock to prevent duplicate workspace creation from concurrent requests
+const workspaceCreationInFlight = new Map<string, Promise<string | null>>();
+
 function validatePeriod(raw: string | undefined): OpsPeriod {
   if (raw && VALID_PERIODS.has(raw as OpsPeriod)) return raw as OpsPeriod;
   return "24h";
@@ -89,20 +92,32 @@ export const instanceOpsRoutes = new Elysia({ prefix: "/api/instances" })
 
         if (!isMCConfigured()) return null;
 
-        // Lazy-create workspace
-        const workspaceId = await createMCWorkspace(
-          instance.id,
-          instance.instanceName || instance.id,
-        );
+        // Coalesce concurrent lazy-creation requests for the same instance
+        const existing = workspaceCreationInFlight.get(instance.id);
+        if (existing) return existing;
 
-        if (workspaceId) {
-          await db
-            .update(instances)
-            .set({ mcWorkspaceId: workspaceId, updatedAt: new Date() })
-            .where(eq(instances.id, instance.id));
-        }
+        const promise = (async () => {
+          try {
+            const workspaceId = await createMCWorkspace(
+              instance.id,
+              instance.instanceName || instance.id,
+            );
 
-        return workspaceId;
+            if (workspaceId) {
+              await db
+                .update(instances)
+                .set({ mcWorkspaceId: workspaceId, updatedAt: new Date() })
+                .where(eq(instances.id, instance.id));
+            }
+
+            return workspaceId;
+          } finally {
+            workspaceCreationInFlight.delete(instance.id);
+          }
+        })();
+
+        workspaceCreationInFlight.set(instance.id, promise);
+        return promise;
       },
     };
   })

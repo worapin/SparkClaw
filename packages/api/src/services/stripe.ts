@@ -2,10 +2,10 @@ import Stripe from "stripe";
 import { db, subscriptions, instances } from "@sparkclaw/shared/db";
 import { getStripePriceId } from "@sparkclaw/shared/constants";
 import type { Plan } from "@sparkclaw/shared/types";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { queueInstanceProvisioning } from "./queue.js";
 import { provisionInstance } from "./railway.js";
-import { createMCWorkspace, isMCConfigured } from "./mission-control.js";
+import { provisionMCWorkspaceForInstance } from "./mission-control.js";
 import { logger } from "../lib/logger.js";
 import { sendPaymentFailedEmail, sendSubscriptionCanceledEmail } from "./email.js";
 import { users } from "@sparkclaw/shared/db";
@@ -81,38 +81,7 @@ export async function handleCheckoutCompleted(
         await provisionInstance(userId, sub.id);
 
         // Create MC workspace after successful provisioning
-        if (isMCConfigured()) {
-          try {
-            const instance = await db.query.instances.findFirst({
-              where: and(
-                eq(instances.userId, userId),
-                eq(instances.subscriptionId, sub.id),
-                eq(instances.status, "ready"),
-              ),
-            });
-
-            if (instance && !instance.mcWorkspaceId) {
-              const workspaceId = await createMCWorkspace(
-                instance.id,
-                instance.instanceName || instance.id,
-              );
-              if (workspaceId) {
-                await db
-                  .update(instances)
-                  .set({ mcWorkspaceId: workspaceId, updatedAt: new Date() })
-                  .where(eq(instances.id, instance.id));
-                logger.info("MC workspace created during provisioning", {
-                  instanceId: instance.id,
-                  workspaceId,
-                });
-              }
-            }
-          } catch (error) {
-            logger.warn("Failed to create MC workspace during provisioning (will lazy-create later)", {
-              error: (error as Error).message,
-            });
-          }
-        }
+        await provisionMCWorkspaceForInstance(userId, sub.id);
       } catch (err) {
         logger.error("Failed to provision instance", { userId, subscriptionId: sub.id, error: (err as Error).message });
       }

@@ -363,32 +363,41 @@ export async function deleteAccount() {
 
 // ── Agent Ops ──────────────────────────────────────────────────────
 
+import type {
+  OpsCostsResponse,
+  OpsCostTrendsResponse,
+  OpsHealthResponse,
+  OpsSecurityResponse,
+  OpsMemoryResponse,
+  OpsUnavailableResponse,
+} from "@sparkclaw/shared/types";
+
 export async function getInstanceOpsCosts(instanceId: string, period: string = "24h") {
-  return request<Record<string, unknown>>(
+  return request<OpsCostsResponse | OpsUnavailableResponse>(
     `/api/instances/${instanceId}/ops/costs?period=${period}`,
   );
 }
 
 export async function getInstanceOpsCostTrends(instanceId: string, period: string = "24h") {
-  return request<Record<string, unknown>>(
+  return request<OpsCostTrendsResponse | OpsUnavailableResponse>(
     `/api/instances/${instanceId}/ops/costs/trends?period=${period}`,
   );
 }
 
 export async function getInstanceOpsHealth(instanceId: string) {
-  return request<Record<string, unknown>>(
+  return request<OpsHealthResponse | OpsUnavailableResponse>(
     `/api/instances/${instanceId}/ops/health`,
   );
 }
 
 export async function getInstanceOpsSecurity(instanceId: string) {
-  return request<Record<string, unknown>>(
+  return request<OpsSecurityResponse | OpsUnavailableResponse>(
     `/api/instances/${instanceId}/ops/security`,
   );
 }
 
 export async function getInstanceOpsMemory(instanceId: string) {
-  return request<Record<string, unknown>>(
+  return request<OpsMemoryResponse | OpsUnavailableResponse>(
     `/api/instances/${instanceId}/ops/memory`,
   );
 }

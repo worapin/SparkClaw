@@ -1,9 +1,7 @@
 import { Queue, Worker, Job } from "bullmq";
-import { eq, and } from "drizzle-orm";
 import { getEnv } from "@sparkclaw/shared";
-import { db, instances } from "@sparkclaw/shared/db";
 import { provisionInstance } from "./railway.js";
-import { createMCWorkspace, isMCConfigured } from "./mission-control.js";
+import { provisionMCWorkspaceForInstance } from "./mission-control.js";
 import { logger } from "../lib/logger.js";
 
 // Redis connection config - lazy loaded
@@ -69,38 +67,7 @@ export const getInstanceWorker = () => {
           logger.info("Instance provisioning completed", { jobId: job.id });
 
           // Create MC workspace after successful provisioning
-          if (isMCConfigured()) {
-            try {
-              const instance = await db.query.instances.findFirst({
-                where: and(
-                  eq(instances.userId, userId),
-                  eq(instances.subscriptionId, subscriptionId),
-                  eq(instances.status, "ready"),
-                ),
-              });
-
-              if (instance && !instance.mcWorkspaceId) {
-                const workspaceId = await createMCWorkspace(
-                  instance.id,
-                  instance.instanceName || instance.id,
-                );
-                if (workspaceId) {
-                  await db
-                    .update(instances)
-                    .set({ mcWorkspaceId: workspaceId, updatedAt: new Date() })
-                    .where(eq(instances.id, instance.id));
-                  logger.info("MC workspace created during provisioning", {
-                    instanceId: instance.id,
-                    workspaceId,
-                  });
-                }
-              }
-            } catch (error) {
-              logger.warn("Failed to create MC workspace during provisioning (will lazy-create later)", {
-                error: (error as Error).message,
-              });
-            }
-          }
+          await provisionMCWorkspaceForInstance(userId, subscriptionId);
         } catch (error) {
           logger.error("Instance provisioning failed in worker", {
             jobId: job.id,
