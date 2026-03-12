@@ -159,6 +159,7 @@ export const instances = pgTable(
       email: boolean;
     }>(),
     errorMessage: text("error_message"),
+    mcWorkspaceId: varchar("mc_workspace_id", { length: 255 }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
