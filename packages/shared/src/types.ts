@@ -308,3 +308,84 @@ export interface SetupWizardState {
   isConfigured: boolean;
   setupData?: SetupWizardData;
 }
+
+// ── Agent Ops Types (Mission Control integration) ──────────────────
+
+export type OpsSubTab = "costs" | "health" | "security" | "memory";
+export type OpsPeriod = "24h" | "7d" | "30d";
+
+export interface OpsUnavailableResponse {
+  available: false;
+}
+
+export interface OpsCostsResponse {
+  available: true;
+  totalTokens: number;
+  totalCost: number;
+  requestCount: number;
+  avgCostPerRequest: number;
+  byModel: Array<{
+    model: string;
+    tokens: number;
+    cost: number;
+  }>;
+}
+
+export interface OpsCostTrendsResponse {
+  available: true;
+  hourly: Array<{
+    time: string;
+    tokens: number;
+    cost: number;
+  }>;
+}
+
+export interface OpsAgentStatus {
+  name: string;
+  status: "active" | "idle" | "offline" | "error";
+  lastSeen: string | null;
+  taskStats: {
+    total: number;
+    assigned: number;
+    inProgress: number;
+    done: number;
+  };
+}
+
+export interface OpsHealthResponse {
+  available: true;
+  agents: OpsAgentStatus[];
+}
+
+export interface OpsSecurityResponse {
+  available: true;
+  postureScore: number;
+  level: "hardened" | "secure" | "needs-attention" | "at-risk";
+  trustScores: Array<{
+    agentName: string;
+    score: number;
+  }>;
+  secretExposures: {
+    count: number;
+    recent: Array<{ type: string; detectedAt: string }>;
+  };
+  injectionAttempts: {
+    count: number;
+    recent: Array<{ source: string; detectedAt: string }>;
+  };
+}
+
+export interface OpsMemoryResponse {
+  available: true;
+  files: Array<{
+    path: string;
+    name: string;
+    size: number;
+    lastModified: string;
+  }>;
+  relationships: Array<{
+    source: string;
+    target: string;
+    type: string;
+  }>;
+}
