@@ -360,3 +360,35 @@ export async function cancelSubscription() {
 export async function deleteAccount() {
   return request<{ success: boolean }>("/api/billing/account", { method: "DELETE" });
 }
+
+// ── Agent Ops ──────────────────────────────────────────────────────
+
+export async function getInstanceOpsCosts(instanceId: string, period: string = "24h") {
+  return request<Record<string, unknown>>(
+    `/api/instances/${instanceId}/ops/costs?period=${period}`,
+  );
+}
+
+export async function getInstanceOpsCostTrends(instanceId: string, period: string = "24h") {
+  return request<Record<string, unknown>>(
+    `/api/instances/${instanceId}/ops/costs/trends?period=${period}`,
+  );
+}
+
+export async function getInstanceOpsHealth(instanceId: string) {
+  return request<Record<string, unknown>>(
+    `/api/instances/${instanceId}/ops/health`,
+  );
+}
+
+export async function getInstanceOpsSecurity(instanceId: string) {
+  return request<Record<string, unknown>>(
+    `/api/instances/${instanceId}/ops/security`,
+  );
+}
+
+export async function getInstanceOpsMemory(instanceId: string) {
+  return request<Record<string, unknown>>(
+    `/api/instances/${instanceId}/ops/memory`,
+  );
+}
