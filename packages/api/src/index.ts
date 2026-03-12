@@ -16,6 +16,7 @@ import { orgRoutes } from "./routes/orgs.js";
 import { usageRoutes } from "./routes/usage.js";
 import { scheduledJobsRoutes } from "./routes/scheduled-jobs.js";
 import { instanceActionsRoutes } from "./routes/instance-actions.js";
+import { instanceOpsRoutes } from "./routes/instance-ops.js";
 import { envVarsRoutes } from "./routes/env-vars.js";
 import { customSkillsRoutes } from "./routes/custom-skills.js";
 import { billingRoutes } from "./routes/billing.js";
@@ -52,6 +53,7 @@ const app = new Elysia()
   .use(usageRoutes)
   .use(scheduledJobsRoutes)
   .use(instanceActionsRoutes)
+  .use(instanceOpsRoutes)
   .use(envVarsRoutes)
   .use(customSkillsRoutes)
   .use(billingRoutes)
