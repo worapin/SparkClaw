@@ -159,9 +159,9 @@
 <section class="pt-24 pb-20 px-6">
   <div class="max-w-5xl mx-auto">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center justify-between mb-8 soft-card p-5">
       <div>
-        <h1 class="font-display text-3xl">Dashboard</h1>
+        <h1 class="font-display text-3xl">Control Center</h1>
         {#if user}
           <p class="text-warm-500 mt-1">Welcome back, {user.email}</p>
         {/if}
@@ -174,7 +174,7 @@
 
     {#if loading}
       <!-- Plan skeleton -->
-      <div class="flex items-center justify-between bg-white rounded-2xl border border-warm-200 p-5 mb-6">
+      <div class="flex items-center justify-between soft-card p-5 mb-6">
         <div class="flex items-center gap-4">
           <Skeleton width="80px" height="24px" />
           <div class="h-6 w-px bg-warm-200"></div>
@@ -226,7 +226,7 @@
         <button
           onclick={handleCreateInstance}
           disabled={creating}
-          class="btn-lift bg-terra-500 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-terra-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+          class="btn-primary px-5 py-2.5 text-sm disabled:opacity-50 flex items-center gap-2"
         >
           {#if creating}
             <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -248,7 +248,7 @@
       {:else}
         <div class="grid md:grid-cols-2 gap-4 stagger">
           {#each instances as inst (inst.id)}
-            <div class="bg-white rounded-2xl border border-warm-200 p-6 card-hover">
+            <div class="soft-card p-6 card-hover">
               <!-- Instance header -->
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-display text-lg truncate">{inst.instanceName || `Instance ${inst.id.slice(0, 8)}`}</h3>

@@ -110,7 +110,7 @@
         <a href="/account" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5" class:text-warm-900={isActive('/account')}>Account</a>
       {:else}
         <a href="/auth" class="text-sm font-medium text-warm-600 hover:text-warm-900 transition-colors px-3 py-1.5">Log in</a>
-        <a href="/pricing" class="text-sm font-semibold bg-warm-900 text-warm-50 px-4 py-2 rounded-lg hover:bg-warm-800 transition-colors">Get Started</a>
+        <a href="/pricing" class="text-sm font-semibold bg-warm-900 text-warm-50 px-4 py-2 rounded-lg hover:bg-warm-800 transition-colors">Start Setup</a>
       {/if}
     </div>
 
@@ -153,7 +153,7 @@
         <a href="/account" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Account</a>
       {:else}
         <a href="/auth" class="block text-sm font-medium text-warm-700" onclick={() => mobileOpen = false}>Log in</a>
-        <a href="/pricing" class="block text-sm font-semibold bg-warm-900 text-warm-50 px-4 py-2 rounded-lg text-center" onclick={() => mobileOpen = false}>Get Started</a>
+        <a href="/pricing" class="block text-sm font-semibold bg-warm-900 text-warm-50 px-4 py-2 rounded-lg text-center" onclick={() => mobileOpen = false}>Start Setup</a>
       {/if}
     </div>
   {/if}

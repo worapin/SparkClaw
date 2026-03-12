@@ -36,29 +36,30 @@
   <title>Pricing - SparkClaw</title>
 </svelte:head>
 
-<section class="pt-32 pb-20 px-6">
+<section class="pt-28 pb-20 px-6">
   <div class="max-w-5xl mx-auto">
-    <div class="text-center mb-16 stagger">
-      <h1 class="font-display text-4xl md:text-5xl mb-4">Simple, <span class="hand-underline">honest</span> pricing</h1>
-      <p class="text-warm-500 text-lg max-w-lg mx-auto">Launch your own OpenClaw instance. No hidden fees. Cancel anytime.</p>
+    <div class="text-center mb-14 stagger">
+      <div class="section-kicker mb-3">Pricing</div>
+      <h1 class="font-display text-4xl md:text-6xl mb-4">Pick a plan that matches your launch stage</h1>
+      <p class="text-warm-600 text-lg max-w-2xl mx-auto">All tiers include managed deployments, SSL, monitoring, and guided setup.</p>
+      <div class="mt-3 text-sm text-warm-500">Cancel anytime. Your data is retained for 30 days after cancellation.</div>
     </div>
 
     <div class="grid md:grid-cols-3 gap-6 stagger">
       {#each plans as plan}
-        <div class="card-hover rounded-2xl p-8 flex flex-col relative {plan.key === 'pro' ? 'bg-warm-900 text-warm-50 ring-2 ring-terra-500 shadow-xl' : 'bg-white border border-warm-200'}">
+        <div class="pricing-card p-8 flex flex-col relative {plan.key === 'pro' ? 'featured' : ''}">
           {#if plan.key === "pro"}
-            <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-terra-500 text-white text-xs font-bold px-4 py-1 rounded-full">POPULAR</div>
+            <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-terra-500 text-white text-xs font-bold px-4 py-1 rounded-full">Most Popular</div>
           {/if}
           <h3 class="font-display text-2xl mb-1">{plan.name}</h3>
-          <p class="{plan.key === 'pro' ? 'text-warm-400' : 'text-warm-500'} text-sm mb-6">{plan.tagline}</p>
+          <p class="text-warm-500 text-sm mb-6">{plan.tagline}</p>
           <div class="mb-6">
-            <span class="font-display text-5xl">${plan.price}</span>
-            <span class="{plan.key === 'pro' ? 'text-warm-400' : 'text-warm-500'}">/mo</span>
+            <span class="font-display text-5xl">${plan.price}</span><span class="text-warm-500">/mo</span>
           </div>
           <ul class="space-y-3 mb-8 flex-1">
             {#each plan.features as feature}
-              <li class="flex items-start gap-3 text-sm {plan.key === 'pro' ? 'text-warm-200' : 'text-warm-600'}">
-                <svg class="w-5 h-5 {plan.key === 'pro' ? 'text-terra-400' : 'text-green-500'} mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <li class="flex items-start gap-3 text-sm text-warm-700">
+                <svg class="w-5 h-5 text-terra-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
                 {feature}
               </li>
             {/each}
@@ -66,14 +67,18 @@
           <button
             onclick={() => handleSelect(plan.key)}
             disabled={loading !== null}
-            class="w-full py-3 rounded-xl font-semibold transition-all {plan.key === 'pro' ? 'btn-lift bg-terra-500 text-white hover:bg-terra-600' : 'border-2 border-warm-200 text-warm-700 hover:border-warm-300 hover:bg-warm-50'}"
+            class="w-full py-3 font-semibold transition-all {plan.key === 'pro' ? 'btn-primary' : 'btn-ghost'}"
           >
-            {loading === plan.key ? "Redirecting..." : "Get Started"}
+            {loading === plan.key ? "Redirecting..." : (plan.key === "pro" ? "Start Pro Setup" : `Choose ${plan.name}`)}
           </button>
         </div>
       {/each}
     </div>
 
-    <p class="text-center text-warm-400 text-sm mt-8">All plans include SSL, backups, monitoring, and auto-updates.</p>
+    <div class="mt-10 grid md:grid-cols-3 gap-3">
+      <div class="soft-card p-4 text-sm text-warm-600">Provisioning starts right after successful checkout.</div>
+      <div class="soft-card p-4 text-sm text-warm-600">No platform lock-in. Keep your OpenClaw configs portable.</div>
+      <div class="soft-card p-4 text-sm text-warm-600">Need custom limits or migration support? Contact us.</div>
+    </div>
   </div>
 </section>
