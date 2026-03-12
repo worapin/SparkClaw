@@ -33,6 +33,9 @@ const envSchema = z.object({
   PRISM_API_KEY: z.string().optional(),
   SKILL_RUNNER_URL: z.string().url().optional(),
   SKILL_RUNNER_TOKEN: z.string().optional(),
+  // Mission Control (optional)
+  MISSION_CONTROL_URL: z.string().url().optional(),
+  MISSION_CONTROL_API_KEY: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
