@@ -9,7 +9,7 @@ COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/api/package.json ./packages/api/
 
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # ============================================================
 # Stage 2: Build api (shared is TypeScript source, Bun handles it directly)

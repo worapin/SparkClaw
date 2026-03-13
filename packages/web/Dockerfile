@@ -8,7 +8,7 @@ COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/web/package.json ./packages/web/
 
-RUN bun install --frozen-lockfile
+RUN bun install
 
 # ============================================================
 # Stage 2: Build SvelteKit
