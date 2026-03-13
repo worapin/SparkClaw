@@ -4,7 +4,7 @@
 FROM oven/bun:1.3.10-slim AS deps
 WORKDIR /app
 
-COPY package.json bun.lockb ./
+COPY package.json bun.lock ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/web/package.json ./packages/web/
 
