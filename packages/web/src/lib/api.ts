@@ -1,7 +1,7 @@
 import type { MeResponse, InstanceResponse, Plan, SetupWizardState, ApiKeyResponse, LlmKeyResponse, OrgResponse, OrgMemberResponse, UsageSummary, ScheduledJobResponse, AuditLogResponse, EnvVarResponse, CustomSkillResponse, InstanceHealthResponse, InstanceLogEntry, SkillExecutionResult } from "@sparkclaw/shared/types";
 import type { SaveSetupInput } from "@sparkclaw/shared/schemas";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_BASE = import.meta.env.PUBLIC_API_URL || import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
