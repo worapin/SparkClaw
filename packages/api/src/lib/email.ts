@@ -21,7 +21,7 @@ export async function sendOtpEmail(email: string, code: string): Promise<void> {
   }
 
   await getResend().emails.send({
-    from: "SparkClaw <noreply@sparkclaw.com>",
+    from: "SparkClaw <noreply@updates.getsparkchat.com>",
     to: email,
     subject: `Your SparkClaw verification code: ${code}`,
     html: `
