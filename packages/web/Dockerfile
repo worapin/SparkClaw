@@ -22,6 +22,7 @@ ENV PUBLIC_API_URL=${PUBLIC_API_URL}
 
 COPY packages/shared ./packages/shared
 COPY packages/web ./packages/web
+COPY tsconfig.json ./
 
 RUN bun run --filter @sparkclaw/web build
 
