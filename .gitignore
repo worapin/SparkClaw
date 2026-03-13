@@ -13,11 +13,7 @@ dist/
 .output/
 build/
 
-# Drizzle generated migrations
-drizzle/migrations/
 
-# Bun
-bun.lock
 
 # IDE
 .vscode/
